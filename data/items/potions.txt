@@ -1,0 +1,7 @@
+# name,price,level,stat,amount
+Small Healing Draught,30,1,HP,30
+Minor Focus Tonic,25,1,MP,20
+Brute Elixir,60,2,STRENGTH,5
+Quickstep Brew,60,2,AGILITY,5
+Sharpsight Infusion,60,2,DEXTERITY,5
+Confidence Draught,120,2,STRENGTH, 15

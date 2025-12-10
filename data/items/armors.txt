@@ -1,0 +1,6 @@
+# name,price,level,damageReduction
+Torn Cloak,40,1,5
+Warden's Vest,100,1,10
+Soulplate Armor,200,2,18
+Echoweave Robe,160,2,14
+Stoneguard Harness,230,3,22

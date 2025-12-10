@@ -1,0 +1,4 @@
+# DESIRE monsters
+Whisper Tempter,1,105,10,19,19,21,23,8,0.10
+Craving Serpent,2,130,15,22,21,23,27,10,0.11
+Lustbound Fiend,3,150,20,25,23,25,31,12,0.12

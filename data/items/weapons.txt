@@ -1,0 +1,6 @@
+# name,price,level,damage,hands
+Rusty Blade,50,1,15,1
+Soulbrand,120,1,25,1
+Fracture Greatsword,220,2,40,2
+Whisper Bow,180,2,32,2
+Mindpiercer Staff,200,2,30,2

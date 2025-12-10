@@ -1,0 +1,7 @@
+# name,price,level,baseDamage,manaCost,type
+Anchor of Calm,80,1,25,20,STILLNESS
+Shatter Guard,110,2,35,25,BREAKDOWN
+Veil Pierce,120,2,30,25,CLARITY
+Soulquake,180,3,50,35,BREAKDOWN
+Silent Tide,160,3,45,30,STILLNESS
+Mind Shatter,150,2,35,20,CONFUSION

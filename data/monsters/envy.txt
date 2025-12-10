@@ -1,0 +1,4 @@
+# ENVY monsters
+Shade Mimic,1,100,0,21,17,20,24,9,0.10
+Green-Eyed Phantom,2,125,5,23,19,22,28,11,0.12
+Covetous Shade,3,145,10,26,21,23,32,13,0.14

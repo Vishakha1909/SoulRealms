@@ -1,0 +1,4 @@
+# FEAR monsters
+Shadow Lurker,1,90,0,20,18,24,22,6,0.20
+Panic Wraith,2,110,10,22,20,28,26,8,0.25
+Nightmare Stalker,3,130,15,24,22,30,30,10,0.30

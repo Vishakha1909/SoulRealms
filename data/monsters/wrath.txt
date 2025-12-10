@@ -1,0 +1,5 @@
+# WRATH monsters
+# name,level,maxHp,maxMp,str,dex,agi,baseDamage,defense,dodge
+Rage Brute,1,120,0,30,10,10,35,10,0.05
+Flame Howler,2,150,0,38,12,12,45,12,0.07
+Ash Colossus,3,200,0,45,14,8,55,18,0.08

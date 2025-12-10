@@ -1,0 +1,4 @@
+# SORROW monsters
+Husk Weeper,1,130,0,22,10,10,24,18,0.05
+Mourning Golem,2,170,0,25,10,8,28,24,0.03
+Dirge Titan,3,210,0,28,11,7,32,30,0.02
