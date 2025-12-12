@@ -1,8 +1,7 @@
 package app;
 
-import game.core.game.Game;
-import game.emotionwar.EmotionWarGame;
-
+import java.util.Arrays;
+import java.util.List;
 import java.util.Scanner;
 
 public class Main {
@@ -22,7 +21,17 @@ public class Main {
             String choice = scanner.nextLine().trim();
 
             if ("1".equals(choice)) {
-                Game game = new EmotionWarGame();
+                System.out.println("Which game would you like to play?");
+                System.out.println("1) Legends of Valor (Lane based, destroy the nexus)");
+                System.out.println("2) Legends and Monsters (Open world exploration)");
+                System.out.print("> ");
+                String gameChoice = getInput(Arrays.asList("1","2"));
+                GameController game;
+                if (gameChoice.equals("1")) {
+                    game = new GameController("Lanes");
+                } else {
+                    game = new GameController("Grid");
+                }
                 game.init();
                 game.run();
                 System.out.println();
@@ -37,5 +46,26 @@ public class Main {
 
         System.out.println("Goodbye.");
         // (We do NOT close scanner here to avoid issues with System.in in some environments.)
+    }
+
+    private static String getInput(List<String> options){
+        boolean done = false;
+        String choice = "";
+
+        Scanner scanner = new Scanner(System.in);
+        while (!done) {
+            choice = scanner.next();
+
+            for (String option : options) {
+                if (option.equals(choice)) {
+                    done = true;
+                    break;
+                }
+            }
+            if (!done) {
+                System.out.println("Please enter a valid choice");
+            }
+        }
+        return choice;
     }
 }

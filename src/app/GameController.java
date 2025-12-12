@@ -1,16 +1,12 @@
-package game.emotionwar;
+package app;
 
-import game.core.game.Game;
-import game.core.items.Armor;
-import game.core.items.Item;
-import game.core.items.Potion;
-import game.core.items.Spell;
-import game.core.items.Weapon;
+import game.core.items.*;
 import game.core.market.Market;
 import game.core.model.Hero;
 import game.core.world.Position;
 import game.core.world.TileCategory;
 import game.core.world.World;
+import game.emotionlanes.world.EmotionLanesWorldData;
 import game.emotionwar.factory.DataPaths;
 import game.emotionwar.factory.EmotionHeroFactory;
 import game.emotionwar.factory.EmotionItemFactory;
@@ -29,8 +25,7 @@ import java.util.List;
 import java.util.Random;
 import java.util.Scanner;
 
-public class EmotionWarGame implements Game {
-
+public class GameController {
     private World world;
     private EmotionType[][] emotionLayer;
     private final List<Hero> party = new ArrayList<Hero>();
@@ -40,11 +35,21 @@ public class EmotionWarGame implements Game {
 
     private final Scanner scanner = new Scanner(System.in);
     private final Random rng = new Random();
+    private final String gameType;
 
-    @Override
+
+    public GameController(String gameType){
+        this.gameType = gameType;
+    }
+
     public void init() {
         // WORLD
-        EmotionWorldData worldData = EmotionWorldBuilder.buildDefaultWorld();
+        EmotionWorldData worldData;
+        if (gameType.equals("Lanes")){
+            //TODO set world data for a lanes game creating the board
+        } else {
+            worldData = EmotionWorldBuilder.buildDefaultWorld();
+        }
         this.world = worldData.getWorld();
         this.emotionLayer = worldData.getEmotionLayer();
 
@@ -103,7 +108,6 @@ public class EmotionWarGame implements Game {
         encounterManager = new EmotionEncounterManager(world, emotionLayer, party, rng, scanner);
     }
 
-    @Override
     public void run() {
         boolean running = true;
         while (running) {
@@ -133,7 +137,11 @@ public class EmotionWarGame implements Game {
                 usePotionOutsideBattle();
                 continue;
             } else if ("H".equals(input)) {
-                showHelp();
+                if (gameType.equals("Lanes")){
+                    showHelpLanes();
+                } else {
+                    showHelpGrid();
+                }
                 pause();
                 continue;
             } else if ("Q".equals(input)) {
@@ -159,7 +167,8 @@ public class EmotionWarGame implements Game {
             if (cat == TileCategory.MARKET) {
                 System.out.println("You find a quiet Sanctuary Shrine.");
                 openMarketForParty();
-            } else {
+            } else { //TODO if monster at space engage, else nothing
+                //TODO send tile type to monster encounter
                 boolean survived = encounterManager.handleTileEvent();
                 if (!survived) {
                     running = false;
@@ -308,7 +317,7 @@ public class EmotionWarGame implements Game {
         }
     }
 
-    private void showHelp() {
+    private void showHelpGrid() {
         System.out.println("--------------- HELP / INSTRUCTIONS ---------------");
         System.out.println("Setting:");
         System.out.println("  You are traveling through inner Soul Realms, each one");
@@ -359,6 +368,55 @@ public class EmotionWarGame implements Game {
         System.out.println("Death & Rewards:");
         System.out.println("  - If all heroes fall, the run ends.");
         System.out.println("  - If you win a battle, surviving heroes share gold and XP.");
+        System.out.println("---------------------------------------------------");
+    }
+
+    private void showHelpLanes() {
+        System.out.println("--------------- HELP / INSTRUCTIONS ---------------");
+        System.out.println("Setting:");
+        System.out.println("  You are traveling through inner Soul Realms, each one");
+        System.out.println("  dominated by a single emotion (W/D/F/S/A/E/P).");
+        System.out.println("  Your party are aspects of the self trying to restore balance by defeating the monster's nexus and protecting your home.");
+        System.out.println();
+        System.out.println("Exploration controls:");
+        System.out.println("  W / A / S / D  - Move up / left / down / right");
+        System.out.println("  I              - Inspect party (HP/MP, stats, gold, equipment)");
+        System.out.println("  V              - View inventory per hero");
+        System.out.println("  U              - Use potion on a hero outside of battle");
+        System.out.println("  H              - Show this help screen");
+        System.out.println("  Q              - Quit to end the run");
+        System.out.println();
+        System.out.println("Map tiles:");
+        System.out.println("  @  - Your party");
+        System.out.println("  M  - Sanctuary Market (buy/sell items, change gear)");
+        System.out.println("  #  - Inaccessible rock / blocked tile");
+        //TODO Describe how the new tiles look
+        System.out.println("  (Some neutral-looking tiles are hidden Fractures that");
+        System.out.println("   can trigger harder mixed-emotion battles at higher levels.)");
+        System.out.println();
+        System.out.println("Markets (Sanctuary):");
+        System.out.println("  When you stand on M, you can choose which hero to shop for.");
+        System.out.println("  For that hero you can:");
+        System.out.println("    - Buy items they are high enough level to use");
+        System.out.println("    - Sell items from their inventory");
+        System.out.println("    - Equip weapons and armor");
+        System.out.println();
+        System.out.println("Battles:");
+        System.out.println("  Each round, you choose which hero acts, then the monsters act.");
+        System.out.println("  On a hero's turn you can:");
+        System.out.println("    1) Attack       - Weapon attack on a chosen monster.");
+        System.out.println("    2) Cast Spell   - Spend MP to cast a learned spell.");
+        System.out.println("    3) Use Potion   - Consume a potion from that hero's inventory.");
+        System.out.println("    4) Skip         - End that hero's turn without acting.");
+        System.out.println();
+        System.out.println("  Heroes and monsters can dodge attacks based on their dodge stat.");
+        System.out.println("  After each round, you may heal using potions or rest at markets.");
+        System.out.println();
+        System.out.println("Death & Rewards:");
+        System.out.println("  - If all heroes fall, the run ends.");
+        System.out.println("  - If you win a battle, surviving heroes share gold and XP.");
+        System.out.println("  - Reach the monster nexus at all three lanes to stop the assault and win.");
+        System.out.println("  - If monsters reach the hero's home nexus in all three lanes, you have failed and loose.");
         System.out.println("---------------------------------------------------");
     }
 
