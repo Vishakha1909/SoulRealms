@@ -6,6 +6,7 @@ import game.core.model.Hero;
 import game.core.world.Position;
 import game.core.world.TileCategory;
 import game.core.world.World;
+import game.emotionlanes.world.EmotionLanesWorldBuilder;
 import game.emotionlanes.world.EmotionLanesWorldData;
 import game.emotionwar.factory.DataPaths;
 import game.emotionwar.factory.EmotionHeroFactory;
@@ -36,6 +37,7 @@ public class GameController {
     private final Scanner scanner = new Scanner(System.in);
     private final Random rng = new Random();
     private final String gameType;
+    private boolean running;
 
 
     public GameController(String gameType){
@@ -44,14 +46,14 @@ public class GameController {
 
     public void init() {
         // WORLD
-        EmotionWorldData worldData;
         if (gameType.equals("Lanes")){
-            //TODO set world data for a lanes game creating the board
+            EmotionLanesWorldData worldData = EmotionLanesWorldBuilder.buildDefaultWorld();
+            this.world = worldData.getWorld();
         } else {
-            worldData = EmotionWorldBuilder.buildDefaultWorld();
+            EmotionWorldData worldData = EmotionWorldBuilder.buildDefaultWorld();
+            this.world = worldData.getWorld();
+            this.emotionLayer = worldData.getEmotionLayer();
         }
-        this.world = worldData.getWorld();
-        this.emotionLayer = worldData.getEmotionLayer();
 
         // MONSTERS
         EmotionMonsterFactory.loadAllDefaultMonsters();
@@ -75,12 +77,11 @@ public class GameController {
             party.add(hero);
         } else {
             EmotionPartyBuilder builder = new EmotionPartyBuilder();
-            party.addAll(builder.buildParty(allHeroes, scanner));
+            party.addAll(builder.buildParty(allHeroes, scanner, gameType));
         }
 
         // STARTER GEAR
-        for (int i = 0; i < party.size(); i++) {
-            Hero h = party.get(i);
+        for (Hero h : party) {
             if (!weapons.isEmpty()) {
                 h.equipWeapon(weapons.get(0));
             }
@@ -108,51 +109,24 @@ public class GameController {
         encounterManager = new EmotionEncounterManager(world, emotionLayer, party, rng, scanner);
     }
 
-    public void run() {
-        boolean running = true;
+    public void run(){
+        if (gameType.equals("Lanes")){
+            runLanes();
+        } else {
+            runGrid();
+        }
+    }
+
+    private void runLanes(){
+        this.running = true;
         while (running) {
+            //TODO render each hero in the lane and show tile types
             renderer.render();
             System.out.println("[W/A/S/D] move  [I]nspect [V]iew inventory  [U]se potion [H]elp  [Q]uit");
             System.out.print("> ");
-            String input = scanner.nextLine().trim().toUpperCase();
 
             Position current = world.getPartyPosition();
-            Position next = current;
-
-            if ("W".equals(input)) {
-                next = current.up();
-            } else if ("S".equals(input)) {
-                next = current.down();
-            } else if ("A".equals(input)) {
-                next = current.left();
-            } else if ("D".equals(input)) {
-                next = current.right();
-            } else if ("I".equals(input)) {
-                inspectParty();
-                continue;
-            } else if ("V".equals(input)) {
-                showInventoryMenu();
-                continue;
-            } else if ("U".equals(input)) {
-                usePotionOutsideBattle();
-                continue;
-            } else if ("H".equals(input)) {
-                if (gameType.equals("Lanes")){
-                    showHelpLanes();
-                } else {
-                    showHelpGrid();
-                }
-                pause();
-                continue;
-            } else if ("Q".equals(input)) {
-                System.out.println("Leaving the Soul Realms...");
-                running = false;
-                continue;
-            } else {
-                System.out.println("Unknown command.");
-                pause();
-                continue;
-            }
+            Position next = getPlayerMove(current);
 
             if (!world.moveTo(next)) {
                 // bumped into wall or invalid
@@ -174,14 +148,82 @@ public class GameController {
                     running = false;
                 }
             }
+            //TODO Move monster for lanes game, handle if land on player
         }
         System.out.println("Game over.");
     }
 
+    private void runGrid() {
+        this.running = true;
+        while (running) {
+            renderer.render();
+            System.out.println("[W/A/S/D] move  [I]nspect [V]iew inventory  [U]se potion [H]elp  [Q]uit");
+            System.out.print("> ");
+
+            Position current = world.getPartyPosition();
+            Position next = getPlayerMove(current);
+
+            if (!world.moveTo(next)) {
+                // bumped into wall or invalid
+                pause();
+                continue;
+            }
+
+            // After movement, handle tile events
+            Position pos = world.getPartyPosition();
+            TileCategory cat = world.getTile(pos).getCategory();
+
+            if (cat == TileCategory.MARKET) {
+                System.out.println("You find a quiet Sanctuary Shrine.");
+                openMarketForParty();
+            } else {
+                boolean survived = encounterManager.handleTileEvent();
+                if (!survived) {
+                    running = false;
+                }
+            }
+        }
+        System.out.println("Game over.");
+    }
+
+    private Position getPlayerMove(Position current){
+        String input = scanner.nextLine().trim().toUpperCase();
+        switch (input) {
+            case "W":
+                return current.up();
+            case "S":
+                return current.down();
+            case "A":
+                return current.left();
+            case "D":
+                return current.right();
+            case "I":
+                inspectParty();
+            case "V":
+                showInventoryMenu();
+            case "U":
+                usePotionOutsideBattle();
+            case "H":
+                if (gameType.equals("Lanes")) {
+                    showHelpLanes();
+                } else {
+                    showHelpGrid();
+                }
+                pause();
+            case "Q":
+                System.out.println("Leaving the Soul Realms...");
+                //TODO print game stats
+                this.running = false;
+            default:
+                System.out.println("Unknown command.");
+                pause();
+                return current;
+        }
+    }
+
     private void inspectParty() {
         System.out.println("Party info:");
-        for (int i = 0; i < party.size(); i++) {
-            Hero h = party.get(i);
+        for (Hero h : party) {
             System.out.println("  " + h.toString());
         }
         pause();

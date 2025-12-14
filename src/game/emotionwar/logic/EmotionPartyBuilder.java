@@ -9,17 +9,23 @@ import java.util.Scanner;
 
 public class EmotionPartyBuilder {
 
-    public List<Hero> buildParty(List<EmotionHero> allHeroes, Scanner scanner) {
+    public List<Hero> buildParty(List<EmotionHero> allHeroes, Scanner scanner, String gameType) {
         List<Hero> party = new ArrayList<Hero>();
 
         System.out.println("========================================");
         System.out.println("   Soul Realms: Choose Your Fragments   ");
         System.out.println("========================================");
-        System.out.println("You may journey with up to 3 heroes.");
-        int maxHeroes = 3;
-        int count = promptIntBetween(scanner,
-                "How many heroes will walk the Realms? (1-3): ",
-                1, maxHeroes);
+        int count;
+        if(gameType.equals("Lanes")){
+            System.out.println("You shall journey with 3 heroes.");
+            count = 3;
+        } else {
+            System.out.println("You may journey with up to 3 heroes.");
+            int maxHeroes = 3;
+            count = promptIntBetween(scanner,
+                    "How many heroes will walk the Realms? (1-3): ",
+                    1, maxHeroes);
+        }
 
         System.out.println();
         System.out.println("Available heroes:");
