@@ -1,6 +1,7 @@
 package game.emotionwar.ui;
 
 import game.core.model.Hero;
+import game.core.ui.Renderer;
 import game.core.world.Position;
 import game.core.world.TileCategory;
 import game.core.world.World;
@@ -8,8 +9,9 @@ import game.emotionwar.model.EmotionHero;
 import game.emotionwar.model.EmotionType;
 
 import java.util.List;
+import java.util.Map;
 
-public class EmotionWarRenderer {
+public class EmotionWarRenderer implements Renderer {
 
     private final World world;
     private final EmotionType[][] emotionLayer;
@@ -29,6 +31,11 @@ public class EmotionWarRenderer {
         this.world = world;
         this.emotionLayer = emotionLayer;
         this.party = party;
+    }
+
+    @Override
+    public void render(Map<Position, String> heroTokens, Map<Position, String> monsterTokens) {
+        render();
     }
 
     public void render() {

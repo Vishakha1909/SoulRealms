@@ -1,10 +1,12 @@
 package game.emotionlanes.ui;
 
 import java.util.Map;
+
+import game.core.ui.Renderer;
 import game.core.world.Position;
 import game.emotionlanes.world.EmotionLanesWorldData;
 
-public class EmotionLanesRenderer {
+public class EmotionLanesRenderer implements Renderer {
 
     private final EmotionLanesWorldData data;
     private final char[][] glyph;
@@ -56,6 +58,11 @@ public class EmotionLanesRenderer {
         }
 
         printLegend();
+    }
+
+    @Override
+    public void render() {
+
     }
 
     private void printBorder(int cols) {

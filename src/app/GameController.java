@@ -3,9 +3,11 @@ package app;
 import game.core.items.*;
 import game.core.market.Market;
 import game.core.model.Hero;
+import game.core.ui.Renderer;
 import game.core.world.Position;
 import game.core.world.TileCategory;
 import game.core.world.World;
+import game.emotionlanes.ui.EmotionLanesRenderer;
 import game.emotionlanes.world.EmotionLanesWorldBuilder;
 import game.emotionlanes.world.EmotionLanesWorldData;
 import game.emotionwar.factory.DataPaths;
@@ -31,7 +33,7 @@ public class GameController {
     private EmotionType[][] emotionLayer;
     private final List<Hero> party = new ArrayList<Hero>();
     private Market sanctuaryMarket;
-    private EmotionWarRenderer renderer;
+    private Renderer renderer;
     private EmotionEncounterManager encounterManager;
 
     private final Scanner scanner = new Scanner(System.in);
@@ -49,10 +51,12 @@ public class GameController {
         if (gameType.equals("Lanes")){
             EmotionLanesWorldData worldData = EmotionLanesWorldBuilder.buildDefaultWorld();
             this.world = worldData.getWorld();
+            renderer = new EmotionLanesRenderer(worldData);
         } else {
             EmotionWorldData worldData = EmotionWorldBuilder.buildDefaultWorld();
             this.world = worldData.getWorld();
             this.emotionLayer = worldData.getEmotionLayer();
+            renderer = new EmotionWarRenderer(world, emotionLayer, party);
         }
 
         // MONSTERS
@@ -105,7 +109,6 @@ public class GameController {
         sanctuaryMarket = new Market(stock);
 
         // UI & encounter manager
-        renderer = new EmotionWarRenderer(world, emotionLayer, party);
         encounterManager = new EmotionEncounterManager(world, emotionLayer, party, rng, scanner);
     }
 
@@ -120,7 +123,7 @@ public class GameController {
     private void runLanes(){
         this.running = true;
         while (running) {
-            //TODO render each hero in the lane and show tile types
+            //TODO send correct elements to render
             renderer.render();
             System.out.println("[W/A/S/D] move  [I]nspect [V]iew inventory  [U]se potion [H]elp  [Q]uit");
             System.out.print("> ");
