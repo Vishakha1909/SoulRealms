@@ -191,7 +191,7 @@ private void castSpell(LaneUnit laneHero, LaneUnit engagedMonster) {
                 + " AGI+" + h.getBonusAgi() + ")");
 
         if (engagedNow) {
-            System.out.println("⚠ ENGAGED with " + engaged.getId()
+            System.out.println("!!! ENGAGED with " + engaged.getId()
                     + " HP " + engaged.hpString());
         }
 
@@ -221,6 +221,9 @@ private void castSpell(LaneUnit laneHero, LaneUnit engagedMonster) {
             marketOpt = opt++;
             System.out.println(marketOpt + ") Market (Hero Nexus)");
         }
+
+        int recallOpt = opt++;
+        System.out.println(recallOpt + ") Recall (return to your Nexus)");
 
         int skipOpt = opt++;
         System.out.println(skipOpt + ") Skip");
@@ -303,6 +306,17 @@ private void castSpell(LaneUnit laneHero, LaneUnit engagedMonster) {
             return true; // action consumed
         }
 
+        // Recall
+        if (choice.equals(String.valueOf(recallOpt))) {
+            boolean ok = turns.recallHero(state, h);
+            if (!ok) {
+                System.out.println("Recall failed.");
+                pauseTiny();
+                continue;
+            }
+            return true; // action consumed
+        }
+
         System.out.println("Invalid.");
         pauseTiny();
     }
@@ -343,7 +357,7 @@ private void castSpell(LaneUnit laneHero, LaneUnit engagedMonster) {
         // win: any hero reaches monster nexus row
         for (LaneUnit h : state.getHeroes()) {
             if (h.isAlive() && h.getPos().row == topRow) {
-                System.out.println("✅ You sealed the Rift! (Hero reached Monster Nexus)");
+                System.out.println("You sealed the Rift! (Hero reached Monster Nexus)");
                 return true;
             }
         }
@@ -351,7 +365,7 @@ private void castSpell(LaneUnit laneHero, LaneUnit engagedMonster) {
         // lose: any monster reaches hero nexus row
         for (LaneUnit m : state.getMonsters()) {
             if (m.isAlive() && m.getPos().row == bottomRow) {
-                System.out.println("💀 The Core is breached! (Monster reached Hero Nexus)");
+                System.out.println("The Core is breached! (Monster reached Hero Nexus)");
                 return true;
             }
         }
