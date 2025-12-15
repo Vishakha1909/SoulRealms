@@ -35,7 +35,7 @@ public class NexusMarketService {
     }
 
     public void openForHero(Hero h, Scanner sc) {
-        System.out.println("🛒 Nexus Market: " + h.getName() + " (Gold: " + h.getGold() + ")");
+        System.out.println("Nexus Market: " + h.getName() + " (Gold: " + h.getGold() + ")");
         market.open(h, sc);
     }
 }

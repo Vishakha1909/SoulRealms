@@ -24,7 +24,7 @@ public class Market {
     boolean shopping = true;
     while (shopping) {
         System.out.println("========================================");
-        System.out.println(" Sanctuary Market – Shopping for " + hero.getName());
+        System.out.println(" Sanctuary Market: Shopping for " + hero.getName());
         System.out.println(" Level: " + hero.getLevel() + "   Gold: " + hero.getGold());
         System.out.println(" Inventory: " + hero.getInventory());
         System.out.println("========================================");
