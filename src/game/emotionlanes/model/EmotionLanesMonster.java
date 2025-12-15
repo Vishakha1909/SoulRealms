@@ -42,3 +42,4 @@ public class EmotionLanesMonster extends Monster {
         return getName() + " (Lvl " + level + ") " + stats;
     }
 }
+
