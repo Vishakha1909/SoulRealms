@@ -13,11 +13,22 @@ public class SpawnManager {
 
         // H1/H2/H3
         for (int i = 0; i < hs.length; i++) {
-            state.getHeroes().add(new LaneUnit("H" + (i + 1), UnitType.HERO, hs[i]));
+            LaneUnit h = new LaneUnit("H" + (i + 1), UnitType.HERO, hs[i]);
+            // slight variety
+            if (i == 0) { h.setHp(36); h.setAtk(7); h.setDef(3); }
+            if (i == 1) { h.setHp(30); h.setAtk(9); h.setDef(2); }
+            if (i == 2) { h.setHp(28); h.setAtk(10); h.setDef(1); }
+            state.getHeroes().add(h);
         }
+
         // M1/M2/M3
         for (int i = 0; i < ms.length; i++) {
-            state.getMonsters().add(new LaneUnit("M" + (i + 1), UnitType.MONSTER, ms[i]));
+            LaneUnit m = new LaneUnit("M" + (i + 1), UnitType.MONSTER, ms[i]);
+            // monsters are slightly tanky so engagements matter
+            m.setHp(26);
+            m.setAtk(8);
+            m.setDef(1);
+            state.getMonsters().add(m);
         }
     }
 }

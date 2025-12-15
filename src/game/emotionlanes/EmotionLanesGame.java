@@ -1,10 +1,8 @@
 package game.emotionlanes;
 
-import java.util.Map;
 import java.util.Scanner;
 
 import game.core.game.Game;
-import game.core.world.Position;
 import game.emotionlanes.logic.LanesState;
 import game.emotionlanes.logic.SpawnManager;
 import game.emotionlanes.logic.TokenMapper;
@@ -30,84 +28,128 @@ public class EmotionLanesGame implements Game {
     public void init() {
         data = EmotionLanesWorldBuilder.buildDefaultWorld();
         state = new LanesState(data.getWorld(), data.getGlyphLayer());
-        
-
-        renderer = new EmotionLanesRenderer(data); // uses glyphLayer internally
-
+        renderer = new EmotionLanesRenderer(data);
         spawns.spawnDefault(state, data);
     }
 
     @Override
-public void run() {
-    boolean running = true;
+    public void run() {
+        boolean running = true;
 
-    while (running) {
-        renderer.render(tokens.heroTokens(state), tokens.monsterTokens(state));
+        while (running) {
+            renderer.render(tokens.heroTokens(state), tokens.monsterTokens(state));
 
-        if (checkWinLose()) break;
+            if (checkWinLose()) break;
 
-        System.out.println("=== HERO PHASE ===");
+            // ===== HERO PHASE (each living hero acts once) =====
+            System.out.println("=== HERO PHASE ===");
+            for (int i = 0; i < state.getHeroes().size(); i++) {
+                LaneUnit h = state.getHeroes().get(i);
+                if (!h.isAlive()) continue;
 
+                boolean tookAction = heroTurn(h);
+                if (!tookAction) {
+                    // allow quit
+                    running = false;
+                    break;
+                }
+
+                if (checkWinLose()) {
+                    running = false;
+                    break;
+                }
+            }
+
+            if (!running) break;
+
+            // ===== MONSTER PHASE =====
+            System.out.println("=== MONSTER PHASE ===");
+            turns.monstersAct(data.getWorld(), state);
+
+            if (checkWinLose()) break;
+        }
+
+        System.out.println("Back to main menu.");
+    }
+
+    private boolean heroTurn(LaneUnit h) {
+        while (true) {
+            renderer.render(tokens.heroTokens(state), tokens.monsterTokens(state));
+            System.out.println("Hero turn: " + h.getId() + " HP " + h.getHp() + " at " + h.getPos());
+            System.out.println("1) Move (W/A/S/D)");
+            System.out.println("2) Teleport (across lanes)");
+            System.out.println("3) Skip");
+            System.out.println("Q) Quit to menu");
+            System.out.print("> ");
+
+            String choice = sc.nextLine().trim().toUpperCase();
+            if ("Q".equals(choice)) return false;
+
+            if ("3".equals(choice)) return true;
+
+            if ("1".equals(choice)) {
+                System.out.print("Direction (W/A/S/D) or X cancel: ");
+                String mv = sc.nextLine().trim().toUpperCase();
+                if (mv.length() == 0) continue;
+                if ("X".equals(mv)) continue;
+
+                char dir = mv.charAt(0);
+                boolean moved = turns.tryMoveHero(data.getWorld(), state, h, dir);
+                if (!moved) {
+                    System.out.println("Blocked / illegal move (hero collision or behind monster).");
+                    pauseTiny();
+                    continue;
+                }
+                return true; // action spent
+            }
+
+            if ("2".equals(choice)) {
+                LaneUnit target = pickOtherHero(h);
+                if (target == null) continue;
+
+                boolean ok = turns.tryTeleportHero(data.getWorld(), state, h, target);
+                if (!ok) {
+                    System.out.println("Teleport failed (must be across lanes, adjacent to ally, not ahead, not behind monsters).");
+                    pauseTiny();
+                    continue;
+                }
+                return true; // action spent
+            }
+
+            System.out.println("Invalid.");
+            pauseTiny();
+        }
+    }
+
+    private LaneUnit pickOtherHero(LaneUnit current) {
+        System.out.println("Teleport target hero:");
         for (int i = 0; i < state.getHeroes().size(); i++) {
             LaneUnit h = state.getHeroes().get(i);
             if (!h.isAlive()) continue;
-
-            boolean done = false;
-            while (!done) {
-                renderer.render(tokens.heroTokens(state), tokens.monsterTokens(state));
-                System.out.println("Hero turn: " + h.getId() + " at " + h.getPos());
-                System.out.println("1) Move  (W/A/S/D)");
-                System.out.println("2) Skip");
-                System.out.print("> ");
-
-                String choice = sc.nextLine().trim().toUpperCase();
-                if ("2".equals(choice)) {
-                    done = true;
-                } else if ("1".equals(choice)) {
-                    System.out.print("Direction (W/A/S/D) or X cancel: ");
-                    String mv = sc.nextLine().trim().toUpperCase();
-                    if (mv.length() == 0) continue;
-                    if ("X".equals(mv)) continue;
-
-                    char dir = mv.charAt(0);
-                    boolean moved = turns.tryMoveUnit(data.getWorld(), h, dir);
-                    if (!moved) {
-                        System.out.println("Blocked / invalid move.");
-                    } else {
-                        done = true; // 1 action only
-                    }
-                } else {
-                    System.out.println("Invalid.");
-                }
-            }
+            if (h == current) continue;
+            System.out.println((i + 1) + ") " + h.getId() + " at " + h.getPos());
         }
+        System.out.println("0) Cancel");
+        System.out.print("> ");
+        String s = sc.nextLine().trim();
+        int idx;
+        try {
+            idx = Integer.parseInt(s);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+        if (idx <= 0) return null;
+        idx = idx - 1;
+        if (idx < 0 || idx >= state.getHeroes().size()) return null;
 
-        System.out.println("=== MONSTER PHASE ===");
-        turns.monstersAdvance(data.getWorld(), state.getMonsters());
-
-        printEngagements();
+        LaneUnit chosen = state.getHeroes().get(idx);
+        if (!chosen.isAlive() || chosen == current) return null;
+        return chosen;
     }
 
-    System.out.println("Back to main menu.");
-}
-
-
-    private LaneUnit pickHero(String pick) {
-        if ("1".equals(pick)) return state.getHeroes().get(0);
-        if ("2".equals(pick)) return state.getHeroes().get(1);
-        if ("3".equals(pick)) return state.getHeroes().get(2);
-        return null;
-    }
-
-    private void printEngagements() {
-        for (LaneUnit h : state.getHeroes()) {
-            for (LaneUnit m : state.getMonsters()) {
-                if (h.isAlive() && m.isAlive() &&
-                    h.getPos().equals(m.getPos())) {
-                    System.out.println("⚔  " + h.getId() + " is engaged with " + m.getId() + "!");
-                }
-            }
-        }
+    private void pauseTiny() {
+        System.out.print("(press Enter) ");
+        sc.nextLine();
     }
 
     private boolean checkWinLose() {
