@@ -1,41 +1,50 @@
 package game.emotionlanes.logic;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
 import game.core.world.Position;
 import game.core.world.World;
 import game.emotionlanes.model.LaneUnit;
+import game.emotionlanes.terrain.TerrainEffectManager;
 
 public class TurnManager {
 
     private final Random rng = new Random();
+    private final TerrainEffectManager terrain;
 
-    // Lane separators must match your builder: walls at cols 2 and 5.
-    // Lanes are [0,1], [3,4], [6,7].
-    private static final int[] WALL_COLS = {2, 5};
+    public TurnManager(TerrainEffectManager terrain) {
+        this.terrain = terrain;
+    }
 
-    // ---------- Public API (what EmotionLanesGame calls) ----------
+    // lanes: [0,1], [3,4], [6,7]
+    private int laneIndex(int col) {
+        if (col == 0 || col == 1) return 0;
+        if (col == 3 || col == 4) return 1;
+        if (col == 6 || col == 7) return 2;
+        return -1;
+    }
 
     public boolean tryMoveHero(World world, LanesState state, LaneUnit hero, char dir) {
-        Position next = step(hero.getPos(), dir);
+        Position cur = hero.getPos();
+        Position next = step(cur, dir);
         if (next == null) return false;
 
-        // blocked tile?
         if (!world.getTile(next).isAccessible()) return false;
 
-        // cannot move onto another hero
+        // no hero-on-hero stacking
         if (isOccupiedByHero(state, next)) return false;
 
-        // cannot move "behind" a monster in that lane (heroes move UP)
-        if (!isHeroPositionLegalWrtMonsters(state, hero, next)) return false;
+        // cannot move "past" the nearest monster in that lane (heroes move UP)
+        if (!heroMoveLegalWrtMonsters(state, next)) return false;
 
-        // move
+        Position old = hero.getPos();
         hero.setPos(next);
+        terrain.onMove(hero, old, next);
 
-        // engagement check (battle if sharing tile)
-        resolveEngagementIfAny(state, hero);
+        // if hero steps onto monster, fight immediately
+        LaneUnit mon = monsterOn(state, next);
+        if (mon != null) fight(hero, mon);
 
         return true;
     }
@@ -48,36 +57,34 @@ public class TurnManager {
         int heroLane = laneIndex(hero.getPos().col);
         int targetLane = laneIndex(targetHero.getPos().col);
         if (heroLane == -1 || targetLane == -1) return false;
+        if (heroLane == targetLane) return false; // must be across lanes
 
-        // must teleport across lanes (not same lane)
-        if (heroLane == targetLane) return false;
+        Position[] candidates = new Position[] {
+            targetHero.getPos().up(),
+            targetHero.getPos().down(),
+            targetHero.getPos().left(),
+            targetHero.getPos().right()
+        };
 
-        // destination must be adjacent to targetHero (4-neighborhood)
-        // and ALSO must land in the target lane (so it feels like "switching lanes")
-        List<Position> candidates = new ArrayList<Position>();
-        candidates.add(targetHero.getPos().up());
-        candidates.add(targetHero.getPos().down());
-        candidates.add(targetHero.getPos().left());
-        candidates.add(targetHero.getPos().right());
-
-        for (int i = 0; i < candidates.size(); i++) {
-            Position dest = candidates.get(i);
-
-            // must be in target lane columns
-            if (laneIndex(dest.col) != targetLane) continue;
-
+        for (int i = 0; i < candidates.length; i++) {
+            Position dest = candidates[i];
             if (!world.getTile(dest).isAccessible()) continue;
+            if (laneIndex(dest.col) != targetLane) continue;
             if (isOccupiedByHero(state, dest)) continue;
 
-            // cannot teleport "ahead of" the target hero:
-            // heroes move UP, so "ahead" = smaller row than target
+            // cannot teleport ahead of ally (ahead = smaller row)
             if (dest.row < targetHero.getPos().row) continue;
 
-            // cannot teleport behind a monster in that lane
-            if (!isHeroPosLegalInLane(state, dest)) continue;
+            // cannot teleport past monsters in that lane
+            if (!heroMoveLegalWrtMonsters(state, dest)) continue;
 
+            Position old = hero.getPos();
             hero.setPos(dest);
-            resolveEngagementIfAny(state, hero);
+            terrain.onMove(hero, old, dest);
+
+            LaneUnit mon = monsterOn(state, dest);
+            if (mon != null) fight(hero, mon);
+
             return true;
         }
 
@@ -91,134 +98,100 @@ public class TurnManager {
             LaneUnit m = monsters.get(i);
             if (!m.isAlive()) continue;
 
-            // if engaged with a hero, fight instead of moving
-            LaneUnit engagedHero = heroOnSameTile(state, m.getPos());
+            // engaged? fight instead of moving
+            LaneUnit engagedHero = heroOn(state, m.getPos());
             if (engagedHero != null) {
                 fight(engagedHero, m);
                 continue;
             }
 
-            // monsters move DOWN (toward hero nexus)
             Position down = m.getPos().down();
-            if (isMonsterMoveValid(world, state, m, down)) {
+            if (monsterMoveValid(world, state, down)) {
+                Position old = m.getPos();
                 m.setPos(down);
-                // if this move engages a hero, fight immediately
-                engagedHero = heroOnSameTile(state, m.getPos());
+                terrain.onMove(m, old, down);
+
+                engagedHero = heroOn(state, m.getPos());
                 if (engagedHero != null) fight(engagedHero, m);
                 continue;
             }
 
-            // fallback: attempt sideways inside lane (don’t cross walls)
+            // fallback sideways inside lane-ish
             Position left = m.getPos().left();
             Position right = m.getPos().right();
 
-            if (rng.nextBoolean()) {
-                if (isMonsterMoveValid(world, state, m, left)) {
-                    m.setPos(left);
-                } else if (isMonsterMoveValid(world, state, m, right)) {
-                    m.setPos(right);
-                }
-            } else {
-                if (isMonsterMoveValid(world, state, m, right)) {
-                    m.setPos(right);
-                } else if (isMonsterMoveValid(world, state, m, left)) {
-                    m.setPos(left);
-                }
+            Position chosen = rng.nextBoolean() ? left : right;
+            Position alt    = (chosen == left) ? right : left;
+
+            if (monsterMoveValid(world, state, chosen)) {
+                Position old = m.getPos();
+                m.setPos(chosen);
+                terrain.onMove(m, old, chosen);
+            } else if (monsterMoveValid(world, state, alt)) {
+                Position old = m.getPos();
+                m.setPos(alt);
+                terrain.onMove(m, old, alt);
             }
 
-            // fight if engagement after sideways
-            engagedHero = heroOnSameTile(state, m.getPos());
+            engagedHero = heroOn(state, m.getPos());
             if (engagedHero != null) fight(engagedHero, m);
         }
     }
 
-    // ---------- Combat / engagement ----------
-
-    private void resolveEngagementIfAny(LanesState state, LaneUnit heroJustMoved) {
-        LaneUnit m = monsterOnSameTile(state, heroJustMoved.getPos());
-        if (m != null) {
-            fight(heroJustMoved, m);
-        }
-    }
-
-    // super simple deterministic fight (fast + safe)
-    // (If you want, you can swap this later to call EmotionWar Battle using payloads)
+    // ---- Combat (simple, fast, uses dodge) ----
     private void fight(LaneUnit hero, LaneUnit monster) {
         if (hero == null || monster == null) return;
         if (!hero.isAlive() || !monster.isAlive()) return;
 
-        System.out.println("⚔  ENGAGEMENT: " + hero.getId() + " vs " + monster.getId());
+        System.out.println("⚔  ENGAGEMENT: " + hero.getId() + " (" + hero.hpString() + ") vs " +
+                           monster.getId() + " (" + monster.hpString() + ")");
 
-        // one mini-round of trading blows until one dies
         while (hero.isAlive() && monster.isAlive()) {
-            monster.takeDamage(hero.getAtk());
+
+            // hero attacks
+            if (rng.nextDouble() >= monster.effectiveDodge()) {
+                monster.takeHit(hero.effectiveAttack());
+            } else {
+                System.out.println(monster.getId() + " dodges!");
+            }
             if (!monster.isAlive()) break;
-            hero.takeDamage(monster.getAtk());
+
+            // monster attacks
+            if (rng.nextDouble() >= hero.effectiveDodge()) {
+                hero.takeHit(monster.effectiveAttack());
+            } else {
+                System.out.println(hero.getId() + " dodges!");
+            }
         }
 
-        if (!hero.isAlive()) {
-            System.out.println("💀 " + hero.getId() + " fell.");
-        }
-        if (!monster.isAlive()) {
-            System.out.println("✅ " + monster.getId() + " defeated.");
-        }
+        if (!hero.isAlive()) System.out.println("💀 " + hero.getId() + " fell.");
+        if (!monster.isAlive()) System.out.println("✅ " + monster.getId() + " defeated.");
     }
 
-    // ---------- Legality rules ----------
+    // ---- Rules: cannot move past monsters (heroes move UP) ----
+    private boolean heroMoveLegalWrtMonsters(LanesState state, Position dest) {
+        int lane = laneIndex(dest.col);
+        if (lane == -1) return false;
 
-    private boolean isMonsterMoveValid(World world, LanesState state, LaneUnit monster, Position next) {
-        if (next == null) return false;
+        int nearestMonsterRow = Integer.MAX_VALUE;
+        for (LaneUnit m : state.getMonsters()) {
+            if (!m.isAlive()) continue;
+            if (laneIndex(m.getPos().col) != lane) continue;
+            if (m.getPos().row < nearestMonsterRow) nearestMonsterRow = m.getPos().row;
+        }
+        if (nearestMonsterRow == Integer.MAX_VALUE) return true;
+        return dest.row >= nearestMonsterRow;
+    }
 
-        // blocked tile?
-        if (!world.getTile(next).isAccessible()) return false;
-
-        // cannot move onto another monster
-        if (isOccupiedByMonster(state, next)) return false;
-
-        // cannot move behind a hero in that lane (monsters move DOWN)
-        if (!isMonsterPositionLegalWrtHeroes(state, monster, next)) return false;
-
+    // ---- Monster legality: not into heroes? (heroes+monsters CAN share, so allow that)
+    // but avoid stacking monsters on monsters + blocked tiles.
+    private boolean monsterMoveValid(World world, LanesState state, Position dest) {
+        if (!world.getTile(dest).isAccessible()) return false;
+        for (LaneUnit m : state.getMonsters()) {
+            if (m.isAlive() && m.getPos().equals(dest)) return false;
+        }
         return true;
     }
-
-    // HERO RULE: cannot move to any row that is "ahead" of the nearest alive monster in that lane.
-    // heroes move UP => smaller row is more ahead.
-    private boolean isHeroPositionLegalWrtMonsters(LanesState state, LaneUnit hero, Position next) {
-        int lane = laneIndex(next.col);
-        if (lane == -1) return false;
-
-        int nearestMonsterRow = nearestMonsterRowInLane(state, lane);
-        if (nearestMonsterRow == Integer.MAX_VALUE) return true; // no monsters in that lane
-
-        // illegal if hero would be ABOVE (ahead of) the monster
-        // i.e., trying to go behind/past it
-        return next.row >= nearestMonsterRow;
-    }
-
-    // used by teleport too (just checks lane blockade)
-    private boolean isHeroPosLegalInLane(LanesState state, Position next) {
-        int lane = laneIndex(next.col);
-        if (lane == -1) return false;
-
-        int nearestMonsterRow = nearestMonsterRowInLane(state, lane);
-        if (nearestMonsterRow == Integer.MAX_VALUE) return true;
-        return next.row >= nearestMonsterRow;
-    }
-
-    // MONSTER RULE: cannot move to any row that is "past" the nearest alive hero in that lane.
-    // monsters move DOWN => larger row is more past.
-    private boolean isMonsterPositionLegalWrtHeroes(LanesState state, LaneUnit monster, Position next) {
-        int lane = laneIndex(next.col);
-        if (lane == -1) return false;
-
-        int nearestHeroRow = nearestHeroRowInLane(state, lane);
-        if (nearestHeroRow == Integer.MIN_VALUE) return true; // no heroes in that lane
-
-        // illegal if monster would be BELOW (past) the hero
-        return next.row <= nearestHeroRow;
-    }
-
-    // ---------- Occupancy helpers ----------
 
     private boolean isOccupiedByHero(LanesState state, Position p) {
         for (LaneUnit h : state.getHeroes()) {
@@ -227,61 +200,21 @@ public class TurnManager {
         return false;
     }
 
-    private boolean isOccupiedByMonster(LanesState state, Position p) {
-        for (LaneUnit m : state.getMonsters()) {
-            if (m.isAlive() && m.getPos().equals(p)) return true;
-        }
-        return false;
-    }
-
-    private LaneUnit heroOnSameTile(LanesState state, Position p) {
+    private LaneUnit heroOn(LanesState state, Position p) {
         for (LaneUnit h : state.getHeroes()) {
             if (h.isAlive() && h.getPos().equals(p)) return h;
         }
         return null;
     }
 
-    private LaneUnit monsterOnSameTile(LanesState state, Position p) {
+    private LaneUnit monsterOn(LanesState state, Position p) {
         for (LaneUnit m : state.getMonsters()) {
             if (m.isAlive() && m.getPos().equals(p)) return m;
         }
         return null;
     }
 
-    // ---------- Lane helpers ----------
-
-    private int laneIndex(int col) {
-        // lane0: 0-1, lane1: 3-4, lane2: 6-7
-        if (col == 0 || col == 1) return 0;
-        if (col == 3 || col == 4) return 1;
-        if (col == 6 || col == 7) return 2;
-        return -1;
-    }
-
-    private int nearestMonsterRowInLane(LanesState state, int lane) {
-        int best = Integer.MAX_VALUE;
-        for (LaneUnit m : state.getMonsters()) {
-            if (!m.isAlive()) continue;
-            int ml = laneIndex(m.getPos().col);
-            if (ml != lane) continue;
-            if (m.getPos().row < best) best = m.getPos().row;
-        }
-        return best;
-    }
-
-    private int nearestHeroRowInLane(LanesState state, int lane) {
-        int best = Integer.MIN_VALUE;
-        for (LaneUnit h : state.getHeroes()) {
-            if (!h.isAlive()) continue;
-            int hl = laneIndex(h.getPos().col);
-            if (hl != lane) continue;
-            if (h.getPos().row > best) best = h.getPos().row;
-        }
-        return best;
-    }
-
     private Position step(Position cur, char dir) {
-        if (cur == null) return null;
         if (dir == 'W') return cur.up();
         if (dir == 'S') return cur.down();
         if (dir == 'A') return cur.left();

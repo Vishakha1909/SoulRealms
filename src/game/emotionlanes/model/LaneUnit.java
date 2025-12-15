@@ -1,5 +1,7 @@
 package game.emotionlanes.model;
 
+import game.core.model.Hero;
+import game.core.model.Monster;
 import game.core.world.Position;
 
 public class LaneUnit {
@@ -8,13 +10,17 @@ public class LaneUnit {
     private Position pos;
     private boolean alive = true;
 
-    // lightweight combat stats for lanes (no dependency on EmotionWar battle)
-    private int hp = 30;
-    private int atk = 8;
-    private int def = 2;
+    // Payload from EmotionWar:
+    private Hero hero;
+    private Monster monster;
 
-    // optional payload if you later want to attach EmotionWar Hero/Monster objects
-    private Object payload;
+    public void setHero(Hero hero) { this.hero = hero; }
+    public void setMonster(Monster monster) { this.monster = monster; }
+
+    // Temporary terrain buffs (apply on enter, remove on leave)
+    private int bonusStr = 0;
+    private int bonusDex = 0;
+    private int bonusAgi = 0;
 
     public LaneUnit(String id, UnitType type, Position start) {
         this.id = id;
@@ -24,27 +30,82 @@ public class LaneUnit {
 
     public String getId() { return id; }
     public UnitType getType() { return type; }
+
     public Position getPos() { return pos; }
     public void setPos(Position p) { this.pos = p; }
 
     public boolean isAlive() { return alive; }
     public void setAlive(boolean alive) { this.alive = alive; }
 
-    public int getHp() { return hp; }
-    public void setHp(int hp) { this.hp = hp; if (this.hp <= 0) { this.hp = 0; this.alive = false; } }
+    // ---- Payload attach ----
+    public void attachHero(Hero h) { this.hero = h; }
+    public void attachMonster(Monster m) { this.monster = m; }
+    public Hero getHero() { return hero; }
+    public Monster getMonster() { return monster; }
 
-    public int getAtk() { return atk; }
-    public void setAtk(int atk) { this.atk = atk; }
+    // ---- Buff API ----
+    public void clearBuffs() { bonusStr = 0; bonusDex = 0; bonusAgi = 0; }
+    public void addStrBuff(int d) { bonusStr += d; }
+    public void addDexBuff(int d) { bonusDex += d; }
+    public void addAgiBuff(int d) { bonusAgi += d; }
 
-    public int getDef() { return def; }
-    public void setDef(int def) { this.def = def; }
+    public int getBonusStr() { return bonusStr; }
+    public int getBonusDex() { return bonusDex; }
+    public int getBonusAgi() { return bonusAgi; }
 
-    public void takeDamage(int dmg) {
-        int real = dmg - def;
-        if (real < 1) real = 1;
-        setHp(hp - real);
+    // ---- Effective combat values for Lanes ----
+    // We reuse EmotionWar stats if attached.
+    public int effectiveAttack() {
+        if (hero != null) {
+            // Hero.getAttackDamage already includes weapons; add STR buff as extra
+            return hero.getAttackDamage() + bonusStr;
+        }
+        if (monster != null) {
+            return monster.getAttackDamage() + bonusStr;
+        }
+        return 5 + bonusStr;
     }
 
-    public Object getPayload() { return payload; }
-    public void setPayload(Object payload) { this.payload = payload; }
+    public int effectiveDefense() {
+        if (hero != null) return hero.getDefense();
+        if (monster != null) return monster.getDefense();
+        return 1;
+    }
+
+    public double effectiveDodge() {
+        double base;
+        if (hero != null) base = hero.getDodgeChance();
+        else if (monster != null) base = monster.getDodgeChance();
+        else base = 0.05;
+
+        // Cave gives agility buff; turn that into small dodge bonus
+        double bonus = (bonusAgi * 0.01); // +1% per AGI buff point
+        double out = base + bonus;
+        if (out > 0.60) out = 0.60;
+        return out;
+    }
+
+    public void takeHit(int rawDamage) {
+        int dmg = rawDamage - effectiveDefense();
+        if (dmg < 1) dmg = 1;
+
+        if (hero != null) {
+            hero.takeDamage(dmg);
+            if (!hero.isAlive()) alive = false;
+            return;
+        }
+        if (monster != null) {
+            monster.takeDamage(dmg);
+            if (!monster.isAlive()) alive = false;
+            return;
+        }
+        // fallback
+        alive = false;
+    }
+
+    public String hpString() {
+        if (hero != null) return hero.getHp() + "/" + hero.getStats().getMaxHp();
+        if (monster != null) return monster.getHp() + "/" + monster.getStats().getMaxHp();
+        return alive ? "?" : "0";
+    }
 }
