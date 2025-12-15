@@ -54,27 +54,43 @@ public class EmotionLanesRenderer {
         printHorizontalBorder(cols);
 
         for (int r = 0; r < rows; r++) {
-            // terrain row
-            StringBuilder terr = new StringBuilder();
-            terr.append("|");
-            for (int c = 0; c < cols; c++) {
-                String sym = colorTerrain(glyph[r][c]);
-                terr.append(padCell(sym)).append("|");
-            }
 
-            // occupant row
-            StringBuilder occ = new StringBuilder();
-            occ.append("|");
-            for (int c = 0; c < cols; c++) {
-                Position p = new Position(r, c);
-                String s = occupantLabel(p, heroTokens, monsterTokens);
-                occ.append(padCell(s)).append("|");
-            }
+    StringBuilder terrainLine = new StringBuilder();
+    terrainLine.append("||"); // left border
 
-            System.out.println(terr.toString());
-            System.out.println(occ.toString());
-            printHorizontalBorder(cols);
-        }
+    for (int c = 0; c < cols; c++) {
+        String terr = terrainSymbol(r, c);
+        terrainLine.append(padCell(terr));
+
+        // choose separator
+        if (c == cols - 1) terrainLine.append("||");
+        else if (isLaneWallCol(c)) terrainLine.append("||"); // thick divider after wall col
+        else terrainLine.append("|");
+    }
+
+    StringBuilder occLine = new StringBuilder();
+    occLine.append("||");
+
+    for (int c = 0; c < cols; c++) {
+        Position p = new Position(r, c);
+        String occ = occupantLabel(p, heroTokens, monsterTokens);
+        occLine.append(padCell(occ));
+
+        if (c == cols - 1) occLine.append("||");
+        else if (isLaneWallCol(c)) occLine.append("||");
+        else occLine.append("|");
+    }
+
+    System.out.println(terrainLine.toString());
+    System.out.println(occLine.toString());
+    printHorizontalBorder(cols);
+}
+
+    }
+
+    private String terrainSymbol(int r, int c) {
+        char g = data.getGlyphLayer()[r][c];
+        return colorTerrain(g);
     }
 
     private void printHorizontalBorder(int cols) {
@@ -108,10 +124,10 @@ public class EmotionLanesRenderer {
 
     private String colorTerrain(char g) {
         // N – Nexus, I – Impassable, P – Plain, C – Cave, B – Bush, K – Koulou
-        if (g == 'N') return WHITE + "N" + RESET;          // nexus
+        if (g == 'N') return YELLOW + "N" + RESET;          // nexus
         if (g == 'I') return WHITE + "I" + RESET;          // wall
         if (g == 'P') return "P";                          // plain
-        if (g == 'B') return CYAN + "B" + RESET;           // bush/fog
+        if (g == 'B') return GREEN + "B" + RESET;           // bush/fog
         if (g == 'C') return BLUE + "C" + RESET;           // cave/shadow
         if (g == 'K') return MAGENTA + "K" + RESET;        // ego spire
         return "?";
@@ -153,6 +169,12 @@ private String padCell(String s) {
     while (visibleLen(sb.toString()) < CELL_WIDTH) sb.append(" ");
     return sb.toString();
 }
+
+private boolean isLaneWallCol(int c) {
+    // these are your separator columns in builder: 2 and 5
+    return (c == 2 || c == 5);
+}
+
 
 
     private void printLegend() {
