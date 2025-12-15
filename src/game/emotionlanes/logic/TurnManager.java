@@ -35,16 +35,12 @@ public class TurnManager {
         // no hero-on-hero stacking
         if (isOccupiedByHero(state, next)) return false;
 
-        // cannot move "past" the nearest monster in that lane (heroes move UP)
+        // cannot move past the nearest monster in that lane (heroes move UP)
         if (!heroMoveLegalWrtMonsters(state, next)) return false;
 
         Position old = hero.getPos();
         hero.setPos(next);
         terrain.onMove(hero, old, next);
-
-        // if hero steps onto monster, fight immediately
-        LaneUnit mon = monsterOn(state, next);
-        if (mon != null) fight(hero, mon);
 
         return true;
     }
@@ -82,15 +78,13 @@ public class TurnManager {
             hero.setPos(dest);
             terrain.onMove(hero, old, dest);
 
-            LaneUnit mon = monsterOn(state, dest);
-            if (mon != null) fight(hero, mon);
-
             return true;
         }
 
         return false;
     }
 
+    // ---- Monster phase: if engaged, attack; else move down ----
     public void monstersAct(World world, LanesState state) {
         List<LaneUnit> monsters = state.getMonsters();
 
@@ -98,10 +92,9 @@ public class TurnManager {
             LaneUnit m = monsters.get(i);
             if (!m.isAlive()) continue;
 
-            // engaged? fight instead of moving
             LaneUnit engagedHero = heroOn(state, m.getPos());
             if (engagedHero != null) {
-                fight(engagedHero, m);
+                monsterAttack(engagedHero, m);
                 continue;
             }
 
@@ -110,62 +103,77 @@ public class TurnManager {
                 Position old = m.getPos();
                 m.setPos(down);
                 terrain.onMove(m, old, down);
+            } else {
+                // fallback sideways
+                Position left = m.getPos().left();
+                Position right = m.getPos().right();
 
-                engagedHero = heroOn(state, m.getPos());
-                if (engagedHero != null) fight(engagedHero, m);
-                continue;
+                Position chosen = rng.nextBoolean() ? left : right;
+                Position alt    = (chosen == left) ? right : left;
+
+                if (monsterMoveValid(world, state, chosen)) {
+                    Position old = m.getPos();
+                    m.setPos(chosen);
+                    terrain.onMove(m, old, chosen);
+                } else if (monsterMoveValid(world, state, alt)) {
+                    Position old = m.getPos();
+                    m.setPos(alt);
+                    terrain.onMove(m, old, alt);
+                }
             }
 
-            // fallback sideways inside lane-ish
-            Position left = m.getPos().left();
-            Position right = m.getPos().right();
-
-            Position chosen = rng.nextBoolean() ? left : right;
-            Position alt    = (chosen == left) ? right : left;
-
-            if (monsterMoveValid(world, state, chosen)) {
-                Position old = m.getPos();
-                m.setPos(chosen);
-                terrain.onMove(m, old, chosen);
-            } else if (monsterMoveValid(world, state, alt)) {
-                Position old = m.getPos();
-                m.setPos(alt);
-                terrain.onMove(m, old, alt);
+            // if it moved onto a hero, attack immediately
+            LaneUnit nowEngaged = heroOn(state, m.getPos());
+            if (nowEngaged != null) {
+                monsterAttack(nowEngaged, m);
             }
-
-            engagedHero = heroOn(state, m.getPos());
-            if (engagedHero != null) fight(engagedHero, m);
         }
     }
 
-    // ---- Combat (simple, fast, uses dodge) ----
-    private void fight(LaneUnit hero, LaneUnit monster) {
+    // ---- Engagement helpers ----
+    public LaneUnit engagedMonsterForHero(LanesState state, LaneUnit hero) {
+        return monsterOn(state, hero.getPos());
+    }
+
+    // ---- Combat: one action, not a full loop ----
+    public void heroAttack(LaneUnit hero, LaneUnit monster) {
         if (hero == null || monster == null) return;
         if (!hero.isAlive() || !monster.isAlive()) return;
 
-        System.out.println("⚔  ENGAGEMENT: " + hero.getId() + " (" + hero.hpString() + ") vs " +
-                           monster.getId() + " (" + monster.hpString() + ")");
+        System.out.println("⚔ " + hero.getId() + " attacks " + monster.getId() + "!");
 
-        while (hero.isAlive() && monster.isAlive()) {
-
-            // hero attacks
-            if (rng.nextDouble() >= monster.effectiveDodge()) {
-                monster.takeHit(hero.effectiveAttack());
-            } else {
-                System.out.println(monster.getId() + " dodges!");
-            }
-            if (!monster.isAlive()) break;
-
-            // monster attacks
-            if (rng.nextDouble() >= hero.effectiveDodge()) {
-                hero.takeHit(monster.effectiveAttack());
-            } else {
-                System.out.println(hero.getId() + " dodges!");
-            }
+        if (rng.nextDouble() < monster.effectiveDodge()) {
+            System.out.println(monster.getId() + " dodges!");
+            return;
         }
 
-        if (!hero.isAlive()) System.out.println("💀 " + hero.getId() + " fell.");
-        if (!monster.isAlive()) System.out.println("✅ " + monster.getId() + " defeated.");
+        monster.takeHit(hero.effectiveAttack());
+
+        if (!monster.isAlive()) {
+            System.out.println("✅ " + monster.getId() + " defeated.");
+        } else {
+            System.out.println(monster.getId() + " HP: " + monster.hpString());
+        }
+    }
+
+    public void monsterAttack(LaneUnit hero, LaneUnit monster) {
+        if (hero == null || monster == null) return;
+        if (!hero.isAlive() || !monster.isAlive()) return;
+
+        System.out.println("👹 " + monster.getId() + " strikes " + hero.getId() + "!");
+
+        if (rng.nextDouble() < hero.effectiveDodge()) {
+            System.out.println(hero.getId() + " dodges!");
+            return;
+        }
+
+        hero.takeHit(monster.effectiveAttack());
+
+        if (!hero.isAlive()) {
+            System.out.println("💀 " + hero.getId() + " fell.");
+        } else {
+            System.out.println(hero.getId() + " HP: " + hero.hpString());
+        }
     }
 
     // ---- Rules: cannot move past monsters (heroes move UP) ----
@@ -180,11 +188,12 @@ public class TurnManager {
             if (m.getPos().row < nearestMonsterRow) nearestMonsterRow = m.getPos().row;
         }
         if (nearestMonsterRow == Integer.MAX_VALUE) return true;
+
+        // cannot move to a row ABOVE the nearest monster row
         return dest.row >= nearestMonsterRow;
     }
 
-    // ---- Monster legality: not into heroes? (heroes+monsters CAN share, so allow that)
-    // but avoid stacking monsters on monsters + blocked tiles.
+    // Monsters can share with heroes, but not with other monsters
     private boolean monsterMoveValid(World world, LanesState state, Position dest) {
         if (!world.getTile(dest).isAccessible()) return false;
         for (LaneUnit m : state.getMonsters()) {
