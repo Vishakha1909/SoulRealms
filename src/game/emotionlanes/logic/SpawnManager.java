@@ -1,34 +1,104 @@
 package game.emotionlanes.logic;
 
+import java.util.List;
+import java.util.Random;
+import java.util.Scanner;
+
 import game.core.world.Position;
+import game.emotionlanes.factory.EmotionLanesMonsterFactory;
+import game.emotionlanes.model.EmotionLanesMonster;
 import game.emotionlanes.model.LaneUnit;
 import game.emotionlanes.model.UnitType;
+import game.emotionlanes.terrain.TerrainEffectManager;
 import game.emotionlanes.world.EmotionLanesWorldData;
+
+import game.emotionwar.factory.EmotionHeroFactory;
+import game.emotionwar.model.EmotionHero;
 
 public class SpawnManager {
 
-    public void spawnDefault(LanesState state, EmotionLanesWorldData data) {
+    private final Random rng = new Random();
+
+    // IMPORTANT: set this to your actual lanes monster data file
+    // (you can point it to one of your existing EmotionWar monster files if you want)
+    private static final String LANES_MONSTER_DATA_PATH = "data/monsters/monsters_lanes.txt";
+
+    public void spawnFromEmotionWarData(LanesState state,
+                                       EmotionLanesWorldData data,
+                                       TerrainEffectManager terrain,
+                                       Scanner sc) {
+
+        // -------- HEROES (keep EXACTLY as you had) --------
+        List<EmotionHero> allHeroes = EmotionHeroFactory.loadAllDefaultHeroes();
+        if (allHeroes == null || allHeroes.isEmpty()) {
+            throw new IllegalStateException("No EmotionWar heroes loaded (data files missing?)");
+        }
+
+        EmotionHero h1 = pickHero(allHeroes, sc, "Pick HERO for lane 1 (H1): ");
+        EmotionHero h2 = pickHero(allHeroes, sc, "Pick HERO for lane 2 (H2): ");
+        EmotionHero h3 = pickHero(allHeroes, sc, "Pick HERO for lane 3 (H3): ");
+
         Position[] hs = data.getHeroSpawns();
+        LaneUnit u1 = new LaneUnit("H1", UnitType.HERO, hs[0]); u1.attachHero(h1);
+        LaneUnit u2 = new LaneUnit("H2", UnitType.HERO, hs[1]); u2.attachHero(h2);
+        LaneUnit u3 = new LaneUnit("H3", UnitType.HERO, hs[2]); u3.attachHero(h3);
+
+        state.getHeroes().add(u1);
+        state.getHeroes().add(u2);
+        state.getHeroes().add(u3);
+
+        // -------- MONSTERS (FIXED: use EmotionLanesMonsterFactory) --------
+        // Load lanes monsters from file ONCE
+        // If your factory doesn't guard against double-load, it's still OK to only call this once in init,
+        // but calling here also works if it's idempotent.
+        EmotionLanesMonsterFactory.loadMonsters(LANES_MONSTER_DATA_PATH);
+
         Position[] ms = data.getMonsterSpawns();
 
-        // H1/H2/H3
-        for (int i = 0; i < hs.length; i++) {
-            LaneUnit h = new LaneUnit("H" + (i + 1), UnitType.HERO, hs[i]);
-            // slight variety
-            if (i == 0) { h.setHp(36); h.setAtk(7); h.setDef(3); }
-            if (i == 1) { h.setHp(30); h.setAtk(9); h.setDef(2); }
-            if (i == 2) { h.setHp(28); h.setAtk(10); h.setDef(1); }
-            state.getHeroes().add(h);
-        }
+        // Pick starting monster level (you can scale later)
+        int startLevel = 1;
 
-        // M1/M2/M3
-        for (int i = 0; i < ms.length; i++) {
-            LaneUnit m = new LaneUnit("M" + (i + 1), UnitType.MONSTER, ms[i]);
-            // monsters are slightly tanky so engagements matter
-            m.setHp(26);
-            m.setAtk(8);
-            m.setDef(1);
-            state.getMonsters().add(m);
+        LaneUnit m1 = new LaneUnit("M1", UnitType.MONSTER, ms[0]);
+        m1.attachMonster(randomMonster(startLevel, ms[0], 0));
+
+        LaneUnit m2 = new LaneUnit("M2", UnitType.MONSTER, ms[1]);
+        m2.attachMonster(randomMonster(startLevel, ms[1], 1));
+
+        LaneUnit m3 = new LaneUnit("M3", UnitType.MONSTER, ms[2]);
+        m3.attachMonster(randomMonster(startLevel, ms[2], 2));
+
+        state.getMonsters().add(m1);
+        state.getMonsters().add(m2);
+        state.getMonsters().add(m3);
+
+        // -------- Apply terrain buffs on spawn (keep) --------
+        terrain.onSpawn(u1);
+        terrain.onSpawn(u2);
+        terrain.onSpawn(u3);
+        terrain.onSpawn(m1);
+        terrain.onSpawn(m2);
+        terrain.onSpawn(m3);
+    }
+
+    private EmotionHero pickHero(List<EmotionHero> all, Scanner sc, String prompt) {
+        while (true) {
+            System.out.println(prompt);
+            for (int i = 0; i < all.size(); i++) {
+                EmotionHero h = all.get(i);
+                System.out.println("  " + (i + 1) + ") " + h.getName()
+                        + " (Lvl " + h.getLevel() + ", " + h.getHeroClass() + ")");
+            }
+            System.out.print("> ");
+            String line = sc.nextLine().trim();
+            try {
+                int idx = Integer.parseInt(line) - 1;
+                if (idx >= 0 && idx < all.size()) return all.get(idx);
+            } catch (NumberFormatException e) {}
+            System.out.println("Invalid choice.");
         }
+    }
+
+    private EmotionLanesMonster randomMonster(int level, Position spawn, int laneId) {
+        return EmotionLanesMonsterFactory.randomForLevel(level, spawn, laneId);
     }
 }

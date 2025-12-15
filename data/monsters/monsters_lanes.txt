@@ -1,0 +1,22 @@
+# name,level,maxHp,maxMp,str,dex,agi,baseDamage,defense,dodge
+The Panicked Murmur,4,170,24,18,33,27,30,0,0.28
+Hypervent Phantom,5,200,28,20,38,30,40,0,0.30
+Racing-Mind Revenant,7,260,36,25,42,35,70,0,0.35
+Whisper Tempter,1,105,10,19,19,21,23,8,0.10
+Craving Serpent,2,130,15,22,21,23,27,10,0.11
+Lustbound Fiend,3,150,20,25,23,25,31,12,0.12
+Shade Mimic,1,100,0,21,17,20,24,9,0.10
+Green-Eyed Phantom,2,125,5,23,19,22,28,11,0.12
+Covetous Shade,3,145,10,26,21,23,32,13,0.14
+Shadow Lurker,1,90,0,20,18,24,22,6,0.20
+Panic Wraith,2,110,10,22,20,28,26,8,0.25
+Nightmare Stalker,3,130,15,24,22,30,30,10,0.30
+Crowned Lionborn,2,165,18,22,12,14,20,0,0.06
+Boastbound Sentinel,3,200,22,26,14,15,28,0,0.07
+Apex Monarch Warden,9,430,50,50,26,28,120,0,0.13
+Husk Weeper,1,130,0,22,10,10,24,18,0.05
+Mourning Golem,2,170,0,25,10,8,28,24,0.03
+Dirge Titan,3,210,0,28,11,7,32,30,0.02
+Rage Brute,1,120,0,30,10,10,35,10,0.05
+Flame Howler,2,150,0,38,12,12,45,12,0.07
+Ash Colossus,3,200,0,45,14,8,55,18,0.08
