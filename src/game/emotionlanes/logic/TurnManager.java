@@ -163,8 +163,27 @@ public class TurnManager {
 
     // ---------------- ENGAGEMENT + COMBAT ----------------
     public LaneUnit engagedMonsterForHero(LanesState state, LaneUnit hero) {
-        return monsterOn(state, hero.getPos());
+        if (hero == null || !hero.isAlive()) return null;
+
+        Position hp = hero.getPos();
+        int lane = laneIndex(hp.col);
+        if (lane == -1) return null;
+
+        for (LaneUnit m : state.getMonsters()) {
+            if (!m.isAlive()) continue;
+            if (laneIndex(m.getPos().col) != lane) continue;
+
+            if (inAttackRange(hp, m.getPos())) return m;
+        }
+        return null;
     }
+
+    private boolean inAttackRange(Position a, Position b) {
+        int dr = Math.abs(a.row - b.row);
+        int dc = Math.abs(a.col - b.col);
+        return (dr + dc) <= 1;   // current OR 4-neighbor
+    }
+
 
     public void heroAttack(LaneUnit hero, LaneUnit monster) {
         if (hero == null || monster == null) return;

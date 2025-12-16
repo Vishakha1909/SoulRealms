@@ -43,6 +43,11 @@ public class SpawnManager {
         LaneUnit u2 = new LaneUnit("H2", UnitType.HERO, hs[1]); u2.attachHero(h2);
         LaneUnit u3 = new LaneUnit("H3", UnitType.HERO, hs[2]); u3.attachHero(h3);
 
+        u1.setHomeNexus(hs[0]);
+        u2.setHomeNexus(hs[1]);
+        u3.setHomeNexus(hs[2]);
+
+
         state.getHeroes().add(u1);
         state.getHeroes().add(u2);
         state.getHeroes().add(u3);
