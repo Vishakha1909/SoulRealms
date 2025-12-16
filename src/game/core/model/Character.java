@@ -81,5 +81,19 @@ public boolean spendMp(int amount) {
     return true;
 }
 
+public void setHp(int v) {
+    if (v < 0) v = 0;
+    if (v > stats.getMaxHp()) v = stats.getMaxHp();
+    hp = v;
+}
+
+public void setMp(int v) {
+    if (v < 0) v = 0;
+    if (v > stats.getMaxMp()) v = stats.getMaxMp();
+    mp = v;
+}
+
+public void healFlat(int delta) { setHp(hp + delta); }
+public void restoreMpFlat(int delta) { setMp(mp + delta); }
 
 }
