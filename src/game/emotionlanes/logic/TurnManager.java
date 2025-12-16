@@ -90,50 +90,78 @@ public class TurnManager {
 
     // ---------------- MONSTER PHASE ----------------
     public void monstersAct(World world, LanesState state) {
-        List<LaneUnit> monsters = state.getMonsters();
+    List<LaneUnit> monsters = state.getMonsters();
 
-        for (int i = 0; i < monsters.size(); i++) {
-            LaneUnit m = monsters.get(i);
-            if (!m.isAlive()) continue;
+    System.out.println("=== MONSTER PHASE LOG ===");
 
-            // engaged? attack instead of moving
-            LaneUnit targetHero = heroInRangeForMonster(state, m);
-            if (targetHero != null) {
-                monsterAttack(targetHero, m);
-                continue;
-            }
+    for (int i = 0; i < monsters.size(); i++) {
+        LaneUnit m = monsters.get(i);
+        if (!m.isAlive()) continue;
 
-            Position down = m.getPos().down();
-            if (monsterMoveValid(world, state, down)) {
-                Position old = m.getPos();
-                m.setPos(down);
-                terrain.onMove(m, old, down);
+        // 1) if any hero in attack range, attack (use your helper)
+        LaneUnit target = heroInAttackRange(state, m);
+        if (target != null) {
+            System.out.println(m.getId() + " attacks " + target.getId() + " at " + target.getPos());
+            monsterAttack(target, m);
+            continue;
+        }
+
+        // 2) otherwise move forward/down (or sideways fallback)
+        Position old = m.getPos();
+
+        Position down = old.down();
+        if (monsterMoveValid(world, state, down)) {
+            m.setPos(down);
+            terrain.onMove(m, old, down);
+            System.out.println(m.getId() + " moves DOWN: " + old + " -> " + down);
+        } else {
+            Position left = old.left();
+            Position right = old.right();
+
+            Position chosen = rng.nextBoolean() ? left : right;
+            Position alt    = (chosen == left) ? right : left;
+
+            if (monsterMoveValid(world, state, chosen)) {
+                m.setPos(chosen);
+                terrain.onMove(m, old, chosen);
+                System.out.println(m.getId() + " moves SIDE: " + old + " -> " + chosen);
+            } else if (monsterMoveValid(world, state, alt)) {
+                m.setPos(alt);
+                terrain.onMove(m, old, alt);
+                System.out.println(m.getId() + " moves SIDE: " + old + " -> " + alt);
             } else {
-                // fallback sideways
-                Position left = m.getPos().left();
-                Position right = m.getPos().right();
-
-                Position chosen = rng.nextBoolean() ? left : right;
-                Position alt    = (chosen == left) ? right : left;
-
-                if (monsterMoveValid(world, state, chosen)) {
-                    Position old = m.getPos();
-                    m.setPos(chosen);
-                    terrain.onMove(m, old, chosen);
-                } else if (monsterMoveValid(world, state, alt)) {
-                    Position old = m.getPos();
-                    m.setPos(alt);
-                    terrain.onMove(m, old, alt);
-                }
-            }
-
-            // if it moved onto a hero, attack immediately
-            LaneUnit nowEngaged = heroOn(state, m.getPos());
-            if (nowEngaged != null) {
-                monsterAttack(nowEngaged, m);
+                System.out.println(m.getId() + " is STUCK at " + old);
             }
         }
+
+        // 3) after moving, if now in range, attack immediately (optional but feels good)
+        LaneUnit afterMoveTarget = heroInAttackRange(state, m);
+        if (afterMoveTarget != null) {
+            System.out.println(m.getId() + " now attacks " + afterMoveTarget.getId() + " at " + afterMoveTarget.getPos());
+            monsterAttack(afterMoveTarget, m);
+        }
     }
+
+    System.out.println("=========================");
+}
+
+private LaneUnit heroInAttackRange(LanesState state, LaneUnit monster) {
+    if (monster == null || !monster.isAlive()) return null;
+
+    Position mp = monster.getPos();
+    int lane = laneIndex(mp.col);
+    if (lane == -1) return null;
+
+    for (LaneUnit h : state.getHeroes()) {
+        if (!h.isAlive()) continue;
+        if (laneIndex(h.getPos().col) != lane) continue;
+
+        if (inAttackRange(mp, h.getPos())) return h; // your existing helper
+    }
+    return null;
+}
+
+
 
     // ---------------- OBSTACLES ----------------
     public boolean hasAdjacentObstacle(char[][] glyph, Position p) {

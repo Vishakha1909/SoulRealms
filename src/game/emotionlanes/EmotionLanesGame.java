@@ -117,7 +117,7 @@ public void run() {
         turns.monstersAct(data.getWorld(), state);
 
         // show result of monster phase before ending the round
-        renderer.render(
+        renderer.renderNoClear(
             tokens.heroTokens(state),
             tokens.monsterTokens(state),
             "ROUND " + round + "  |  MONSTER PHASE DONE (press Enter)"

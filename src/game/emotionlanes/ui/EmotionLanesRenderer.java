@@ -24,16 +24,16 @@ public class EmotionLanesRenderer {
     private static final int CELL_WIDTH = 6;
 
     // lane wall columns (inaccessible)
-    // NOTE: thick dividers are after these cols in the ASCII view
     private static final int[] WALL_COLS = {2, 5};
 
     public EmotionLanesRenderer(EmotionLanesWorldData data) {
         this.data = data;
     }
 
+    /** Normal render: clears screen. */
     public void render(Map<Position, String> heroTokens,
-                   Map<Position, String> monsterTokens,
-                   String statusLine) {
+                       Map<Position, String> monsterTokens,
+                       String statusLine) {
 
         clearSoft();
 
@@ -44,7 +44,25 @@ public class EmotionLanesRenderer {
 
         printBoard(heroTokens, monsterTokens);
         printLegend();
+        printStatus(statusLine);
+    }
 
+    /** Option A: render without clearing (for phase logs). */
+    public void renderNoClear(Map<Position, String> heroTokens,
+                              Map<Position, String> monsterTokens,
+                              String statusLine) {
+
+        System.out.println();
+        System.out.println("==================================================");
+        System.out.println("   Emotion Lanes: Defense of the Core");
+        System.out.println("==================================================");
+
+        printBoard(heroTokens, monsterTokens);
+        printLegend();
+        printStatus(statusLine);
+    }
+
+    private void printStatus(String statusLine) {
         if (statusLine != null && !statusLine.isEmpty()) {
             System.out.println();
             System.out.println("--------------------------------------------------");
@@ -52,7 +70,6 @@ public class EmotionLanesRenderer {
             System.out.println("--------------------------------------------------");
         }
     }
-
 
     private void clearSoft() {
         for (int i = 0; i < 18; i++) System.out.println();
@@ -69,14 +86,13 @@ public class EmotionLanesRenderer {
 
         for (int r = 0; r < rows; r++) {
             StringBuilder terrainLine = new StringBuilder();
-            terrainLine.append("||"); // left border (thick)
+            terrainLine.append("||");
 
             for (int c = 0; c < cols; c++) {
                 terrainLine.append(padCell(terrainSymbol(r, c)));
 
-                // separators
-                if (c == cols - 1) terrainLine.append("||");        // right border (thick)
-                else if (isLaneWallCol(c)) terrainLine.append("||"); // thick divider after wall col
+                if (c == cols - 1) terrainLine.append("||");
+                else if (isLaneWallCol(c)) terrainLine.append("||");
                 else terrainLine.append("|");
             }
 
@@ -103,37 +119,16 @@ public class EmotionLanesRenderer {
         return colorTerrain(g);
     }
 
-    /**
-     * IMPORTANT: This border must match the vertical separators used in the rows.
-     * Rows use:
-     *   || at left edge
-     *   || after col 2 and 5
-     *   || at right edge
-     *
-     * So the horizontal border must also insert an extra "+" at those boundaries.
-     */
     private void printHorizontalBorder(int cols) {
+        // simple consistent border (safe)
         StringBuilder sb = new StringBuilder();
-
-        // left thick boundary
         sb.append("+");
-        for (int w = 0; w < CELL_WIDTH; w++) sb.append("-");
-        // after each cell, add + and (if thick boundary) add another +segment
         for (int c = 0; c < cols; c++) {
-            // we already printed one segment before loop; handle remaining segments cleanly
-            if (c == 0) continue; // first cell already accounted
-
-            sb.append("+");
             for (int w = 0; w < CELL_WIDTH; w++) sb.append("-");
-
-            // insert an extra "+" boundary after wall columns to visually thicken
-            if (isLaneWallCol(c - 1)) {
-                sb.append("+");
-            }
+            sb.append("+");
+            // extra "+" after wall columns to match thick dividers visually
+            if (isLaneWallCol(c)) sb.append("+");
         }
-
-        // close right edge: always one final "+"
-        sb.append("+");
         System.out.println(sb.toString());
     }
 
@@ -157,17 +152,16 @@ public class EmotionLanesRenderer {
     }
 
     private String colorTerrain(char g) {
-        if (g == 'N') return YELLOW + "N" + RESET;         // nexus
-        if (g == 'I') return WHITE + "I" + RESET;          // wall
-        if (g == 'P') return "P";                          // plain
-        if (g == 'B') return GREEN + "B" + RESET;          // bush
-        if (g == 'C') return BLUE + "C" + RESET;           // cave
-        if (g == 'K') return MAGENTA + "K" + RESET;        // koulou
-        if (g == 'O') return ORANGE + "O" + RESET;         // obstacle
+        if (g == 'N') return YELLOW + "N" + RESET;
+        if (g == 'I') return WHITE + "I" + RESET;
+        if (g == 'P') return "P";
+        if (g == 'B') return GREEN + "B" + RESET;
+        if (g == 'C') return BLUE + "C" + RESET;
+        if (g == 'K') return MAGENTA + "K" + RESET;
+        if (g == 'O') return ORANGE + "O" + RESET;
         return "?";
     }
 
-    // ANSI-safe padding
     private static final String ANSI_REGEX = "\\u001B\\[[;\\d]*m";
 
     private int visibleLen(String s) {
@@ -182,11 +176,9 @@ public class EmotionLanesRenderer {
         if (hasAnsi && !s.endsWith(RESET)) s = s + RESET;
 
         int vlen = visibleLen(s);
-
         if (vlen > CELL_WIDTH) {
             String plain = s.replaceAll(ANSI_REGEX, "");
-            plain = plain.substring(0, CELL_WIDTH);
-            return plain;
+            return plain.substring(0, CELL_WIDTH);
         }
 
         StringBuilder sb = new StringBuilder(s);
