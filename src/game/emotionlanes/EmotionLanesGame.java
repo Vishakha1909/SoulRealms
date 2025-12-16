@@ -104,28 +104,29 @@ public void run() {
         }
         if (!running) break;
                 
-        renderer.render(
-            tokens.heroTokens(state),
-            tokens.monsterTokens(state),
-            "ROUND " + round + "  |  MONSTER PHASE (press Enter)"
-        );
-        pauseTiny();  // <-- this is the missing piece
+        // ================= MONSTER PHASE =================
 
-        // monsters act
-        //turns.monstersAct(data.getWorld(), state);
-        // monsters act and return log
+// monsters act ONCE and return log
+List<String> monsterLog = turns.monstersAct(data.getWorld(), state);
 
+// render board WITHOUT legend so log fits on screen
+renderer.renderNoLegend(
+    tokens.heroTokens(state),
+    tokens.monsterTokens(state),
+    "ROUND " + round + "  |  MONSTER PHASE"
+);
 
-// PRINT LOG AFTER RENDER
-    
+// print log UNDER board
+System.out.println();
+System.out.println("=== MONSTER PHASE LOG ===");
+if (monsterLog.isEmpty()) {
+    System.out.println("No monster actions.");
+} else {
+    for (String s : monsterLog) System.out.println(s);
+}
+System.out.println("========================");
+pauseTiny();
 
-        // show result of monster phase before ending the round
-        renderer.renderNoClear(
-            tokens.heroTokens(state),
-            tokens.monsterTokens(state),
-            "ROUND " + round + "  |  MONSTER PHASE DONE (press Enter)"
-        );
-        pauseTiny();
 
         if (checkWinLose()) break;
 

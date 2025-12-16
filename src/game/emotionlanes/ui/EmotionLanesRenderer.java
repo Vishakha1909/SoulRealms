@@ -62,6 +62,28 @@ public class EmotionLanesRenderer {
         printStatus(statusLine);
     }
 
+    public void renderNoLegend(Map<Position, String> heroTokens,
+                           Map<Position, String> monsterTokens,
+                           String statusLine) {
+
+    clearSoft();
+
+    System.out.println("==================================================");
+    System.out.println("   Emotion Lanes: Defense of the Core");
+    System.out.println("      (Legends of Valor variant)");
+    System.out.println("==================================================");
+
+    printBoard(heroTokens, monsterTokens);
+
+    if (statusLine != null && !statusLine.isEmpty()) {
+        System.out.println();
+        System.out.println("--------------------------------------------------");
+        System.out.println(statusLine);
+        System.out.println("--------------------------------------------------");
+    }
+}
+
+
     private void printStatus(String statusLine) {
         if (statusLine != null && !statusLine.isEmpty()) {
             System.out.println();
