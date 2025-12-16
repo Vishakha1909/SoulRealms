@@ -103,38 +103,30 @@ public void run() {
             if (checkWinLose()) { running = false; break; }
         }
         if (!running) break;
+                
+        // ================= MONSTER PHASE =================
 
-        // MONSTER PHASE header screen (IMPORTANT: pause so you can see it)
-        renderer.render(
-            tokens.heroTokens(state),
-            tokens.monsterTokens(state),
-            "ROUND " + round + "  |  MONSTER PHASE (press Enter)"
-        );
-        pauseTiny();  // <-- this is the missing piece
-
-        // monsters act
-        turns.monstersAct(data.getWorld(), state);
-        // monsters act and return log
+// monsters act ONCE and return log
 List<String> monsterLog = turns.monstersAct(data.getWorld(), state);
 
-// PRINT LOG AFTER RENDER
-    System.out.println("\n=== MONSTER PHASE LOG ===");
-    if (monsterLog.isEmpty()) {
-        System.out.println("No monster actions.");
-    } else {
-        for (String s : monsterLog) {
-            System.out.println(s);
-        }
-    }
-    System.out.println("========================");
+// render board WITHOUT legend so log fits on screen
+renderer.renderNoLegend(
+    tokens.heroTokens(state),
+    tokens.monsterTokens(state),
+    "ROUND " + round + "  |  MONSTER PHASE"
+);
 
-        // show result of monster phase before ending the round
-        renderer.renderNoClear(
-            tokens.heroTokens(state),
-            tokens.monsterTokens(state),
-            "ROUND " + round + "  |  MONSTER PHASE DONE (press Enter)"
-        );
-        pauseTiny();
+// print log UNDER board
+System.out.println();
+System.out.println("=== MONSTER PHASE LOG ===");
+if (monsterLog.isEmpty()) {
+    System.out.println("No monster actions.");
+} else {
+    for (String s : monsterLog) System.out.println(s);
+}
+System.out.println("========================");
+pauseTiny();
+
 
         if (checkWinLose()) break;
 
