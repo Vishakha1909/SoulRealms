@@ -1,4 +1,4 @@
-# Soul Realms: Emotion War
+# 🕯️ Soul Realms Arcade
 
 
 ### Compile (Mac/Linux/WSL)
@@ -229,3 +229,36 @@ Fully implemented:
 
 ---
 
+11\. Design Patterns Used
+-------------------------
+
+*   **Strategy** – terrain effects, combat calculations
+    
+*   **Factory** – heroes, monsters, items loaded from data
+    
+*   **State** – round/phase control
+    
+*   **Model–View–Controller (MVC)** – game logic vs renderer
+    
+*   **Single Responsibility** – clear separation of concerns
+    
+*   **Composition over Inheritance** – stats, equipment, effects
+    
+
+12\. Summary
+------------
+
+**Soul Realms Arcade** demonstrates:
+
+*   Strong OO design
+    
+*   Clean separation of reusable engine and game-specific logic
+    
+*   Two fully playable games
+    
+*   Dynamic UI and strategic gameplay
+    
+*   Extendable systems for future games
+    
+
+Emotion Lanes serves as the **primary showcase** of advanced turn-based strategy and system interaction.
