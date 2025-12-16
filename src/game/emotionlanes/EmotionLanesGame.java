@@ -7,6 +7,10 @@ import game.core.items.Item;
 import game.core.items.Potion;
 import game.core.items.Spell;
 import game.emotionlanes.model.UnitType;
+import game.emotionlanes.logic.Difficulty;
+import game.emotionlanes.logic.RoundSystem;
+import game.emotionlanes.logic.MonsterWaveSpawner;
+
 
 
 import game.core.game.Game;
@@ -37,6 +41,12 @@ public class EmotionLanesGame implements Game {
     private final SpawnManager spawns = new SpawnManager();
     private NexusMarketService market;
 
+    private int round = 1;
+    private Difficulty difficulty = Difficulty.MEDIUM;
+    private RoundSystem roundSystem;
+    private MonsterWaveSpawner waveSpawner;
+
+
     @Override
     public void init() {
         data = EmotionLanesWorldBuilder.buildDefaultWorld();
@@ -47,6 +57,10 @@ public class EmotionLanesGame implements Game {
         terrain = new TerrainEffectManager(data.getGlyphLayer(), true);
         turns = new TurnManager(terrain);
 
+        roundSystem = new RoundSystem(terrain, data);
+        waveSpawner = new MonsterWaveSpawner(terrain, data);
+
+
         // Nexus market stock from EmotionWar item files
         market = new NexusMarketService();
 
@@ -55,36 +69,66 @@ public class EmotionLanesGame implements Game {
     }
 
     @Override
-    public void run() {
-        boolean running = true;
+public void run() {
+    difficulty = pickDifficulty();
 
-        while (running) {
-            renderer.render(tokens.heroTokens(state), tokens.monsterTokens(state));
+    boolean running = true;
 
-            if (checkWinLose()) break;
+    while (running) {
 
-            // HERO PHASE
-            System.out.println("=== HERO PHASE ===");
-            for (int i = 0; i < state.getHeroes().size(); i++) {
-                LaneUnit h = state.getHeroes().get(i);
-                if (!h.isAlive()) continue;
+        System.out.println("\n===== ROUND " + round + " =====");
 
-                boolean ok = heroTurn(h);
-                if (!ok) { running = false; break; }
+        // start of round: respawn dead heroes
+        roundSystem.startOfRoundRespawns(state);
 
-                if (checkWinLose()) { running = false; break; }
-            }
-            if (!running) break;
+        renderer.render(tokens.heroTokens(state), tokens.monsterTokens(state));
+        if (checkWinLose()) break;
 
-            // MONSTER PHASE
-            System.out.println("=== MONSTER PHASE ===");
-            turns.monstersAct(data.getWorld(), state);
+        // HERO PHASE
+        System.out.println("=== HERO PHASE ===");
+        for (int i = 0; i < state.getHeroes().size(); i++) {
+            LaneUnit h = state.getHeroes().get(i);
+            if (!h.isAlive()) continue;
 
-            if (checkWinLose()) break;
+            boolean ok = heroTurn(h);
+            if (!ok) { running = false; break; }
+
+            if (checkWinLose()) { running = false; break; }
         }
+        if (!running) break;
 
-        System.out.println("Back to main menu.");
+        // MONSTER PHASE
+        System.out.println("=== MONSTER PHASE ===");
+        turns.monstersAct(data.getWorld(), state);
+
+        if (checkWinLose()) break;
+
+        // end of round: regen alive heroes
+        roundSystem.endOfRoundRegen(state);
+
+        // end of round: spawn waves every N rounds
+        int interval = difficulty.getSpawnEveryRounds();
+        int monsterLevel = 1 + (round / 6); // gentle scaling; tweak freely
+        waveSpawner.spawnWaveIfDue(round, interval, state, monsterLevel);
+
+        round++;
     }
+
+    System.out.println("Back to main menu.");
+}
+
+private Difficulty pickDifficulty() {
+    System.out.println("Choose difficulty:");
+    System.out.println("1) EASY   (spawn every 6 rounds)");
+    System.out.println("2) MEDIUM (spawn every 4 rounds)");
+    System.out.println("3) HARD   (spawn every 2 rounds)");
+    System.out.print("> ");
+    String s = sc.nextLine().trim();
+    if ("1".equals(s)) return Difficulty.EASY;
+    if ("3".equals(s)) return Difficulty.HARD;
+    return Difficulty.MEDIUM;
+}
+
 
     private void usePotion(LaneUnit laneHero) {
     if (laneHero.getHero() == null) return;
@@ -172,6 +216,15 @@ private void castSpell(LaneUnit laneHero, LaneUnit engagedMonster) {
     pauseTiny();
 }
 
+private void showInventory(LaneUnit laneHero) {
+    if (laneHero.getHero() == null) return;
+
+    System.out.println("=== INVENTORY: " + laneHero.getHero().getName() + " ===");
+    System.out.println(laneHero.getHero().getInventory());
+    pauseTiny();
+}
+
+
 
     private boolean heroTurn(LaneUnit h) {
     while (true) {
@@ -214,6 +267,9 @@ private void castSpell(LaneUnit laneHero, LaneUnit engagedMonster) {
         // Potion always available (even when not engaged)
         int potionOpt = opt++;
         System.out.println(potionOpt + ") Use Potion");
+
+        int invOpt = opt++;
+        System.out.println(invOpt + ") Inventory");
 
         // Market only at hero nexus row
         int marketOpt = -1;
@@ -315,6 +371,11 @@ private void castSpell(LaneUnit laneHero, LaneUnit engagedMonster) {
                 continue;
             }
             return true; // action consumed
+        }
+
+        if (choice.equals(String.valueOf(invOpt))) {
+            showInventory(h);
+            continue; // free action
         }
 
         System.out.println("Invalid.");

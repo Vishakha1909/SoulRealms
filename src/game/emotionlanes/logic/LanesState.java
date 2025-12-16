@@ -14,6 +14,8 @@ public class LanesState {
     private final List<LaneUnit> heroes = new ArrayList<LaneUnit>();
     private final List<LaneUnit> monsters = new ArrayList<LaneUnit>();
 
+    private int nextMonsterId = 4; // you already spawn M1,M2,M3
+
     public LanesState(World world, char[][] glyphLayer) {
         this.world = world;
         this.glyphLayer = glyphLayer;
@@ -24,4 +26,6 @@ public class LanesState {
 
     public List<LaneUnit> getHeroes() { return heroes; }
     public List<LaneUnit> getMonsters() { return monsters; }
+
+    public int nextMonsterId() { return nextMonsterId++; }
 }

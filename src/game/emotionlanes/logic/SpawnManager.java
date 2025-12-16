@@ -47,7 +47,14 @@ public class SpawnManager {
         state.getHeroes().add(u2);
         state.getHeroes().add(u3);
 
-        // -------- MONSTERS (FIXED: use EmotionLanesMonsterFactory) --------
+        // initial starter kit for heroes
+        StarterKitService kit = new StarterKitService();
+        kit.giveStarterKit(h1);
+        kit.giveStarterKit(h2);
+        kit.giveStarterKit(h3);
+
+
+        // -------- MONSTERS  --------
         // Load lanes monsters from file ONCE
         // If your factory doesn't guard against double-load, it's still OK to only call this once in init,
         // but calling here also works if it's idempotent.
