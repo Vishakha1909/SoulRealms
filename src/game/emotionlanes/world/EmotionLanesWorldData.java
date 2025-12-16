@@ -1,6 +1,7 @@
 package game.emotionlanes.world;
 
 import game.core.world.Position;
+import game.core.world.Tile;
 import game.core.world.World;
 
 /**
@@ -42,4 +43,9 @@ public class EmotionLanesWorldData {
     public Position[] getMonsterSpawns() {
         return monsterSpawns;
     }
+
+    public void setGlyphAt(Position p, char g) {
+    glyphLayer[p.row][p.col] = g;
+}
+
 }

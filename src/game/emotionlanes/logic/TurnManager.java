@@ -25,17 +25,19 @@ public class TurnManager {
         return -1;
     }
 
+    // ---------------- HERO MOVE ----------------
     public boolean tryMoveHero(World world, LanesState state, LaneUnit hero, char dir) {
         Position cur = hero.getPos();
         Position next = step(cur, dir);
         if (next == null) return false;
 
         if (!world.getTile(next).isAccessible()) return false;
+        if (terrain.isObstacle(next)) return false; // cannot enter obstacle
 
         // no hero-on-hero stacking
         if (isOccupiedByHero(state, next)) return false;
 
-        // cannot move past the nearest monster in that lane (heroes move UP)
+        // cannot move past nearest monster in that lane (heroes move UP)
         if (!heroMoveLegalWrtMonsters(state, next)) return false;
 
         Position old = hero.getPos();
@@ -45,6 +47,7 @@ public class TurnManager {
         return true;
     }
 
+    // ---------------- TELEPORT ----------------
     public boolean tryTeleportHero(World world, LanesState state, LaneUnit hero, LaneUnit targetHero) {
         if (hero == null || targetHero == null) return false;
         if (!hero.isAlive() || !targetHero.isAlive()) return false;
@@ -65,6 +68,7 @@ public class TurnManager {
         for (int i = 0; i < candidates.length; i++) {
             Position dest = candidates[i];
             if (!world.getTile(dest).isAccessible()) continue;
+            if (terrain.isObstacle(dest)) continue;
             if (laneIndex(dest.col) != targetLane) continue;
             if (isOccupiedByHero(state, dest)) continue;
 
@@ -84,7 +88,7 @@ public class TurnManager {
         return false;
     }
 
-    // ---- Monster phase: if engaged, attack; else move down ----
+    // ---------------- MONSTER PHASE ----------------
     public void monstersAct(World world, LanesState state) {
         List<LaneUnit> monsters = state.getMonsters();
 
@@ -92,6 +96,7 @@ public class TurnManager {
             LaneUnit m = monsters.get(i);
             if (!m.isAlive()) continue;
 
+            // engaged? attack instead of moving
             LaneUnit engagedHero = heroOn(state, m.getPos());
             if (engagedHero != null) {
                 monsterAttack(engagedHero, m);
@@ -130,12 +135,37 @@ public class TurnManager {
         }
     }
 
-    // ---- Engagement helpers ----
+    // ---------------- OBSTACLES ----------------
+    public boolean hasAdjacentObstacle(char[][] glyph, Position p) {
+        if (glyph == null || p == null) return false;
+
+        Position[] adj = new Position[]{ p.up(), p.down(), p.left(), p.right() };
+        for (int i = 0; i < adj.length; i++) {
+            Position q = adj[i];
+            if (q == null) continue;
+            if (q.row < 0 || q.row >= glyph.length) continue;
+            if (q.col < 0 || q.col >= glyph[0].length) continue;
+            if (glyph[q.row][q.col] == 'O') return true;
+        }
+        return false;
+    }
+
+    /** Removes an adjacent obstacle in the chosen direction (W/A/S/D). Counts as the hero’s action. */
+    public boolean tryRemoveObstacleAdjacent(LaneUnit hero, char dir) {
+        if (hero == null || !hero.isAlive()) return false;
+        Position target = step(hero.getPos(), dir);
+        if (target == null) return false;
+
+        boolean ok = terrain.removeObstacle(target);
+        if (ok) System.out.println("🧱 Obstacle removed at " + target + "!");
+        return ok;
+    }
+
+    // ---------------- ENGAGEMENT + COMBAT ----------------
     public LaneUnit engagedMonsterForHero(LanesState state, LaneUnit hero) {
         return monsterOn(state, hero.getPos());
     }
 
-    // ---- Combat: one action, not a full loop ----
     public void heroAttack(LaneUnit hero, LaneUnit monster) {
         if (hero == null || monster == null) return;
         if (!hero.isAlive() || !monster.isAlive()) return;
@@ -149,11 +179,8 @@ public class TurnManager {
 
         monster.takeHit(hero.effectiveAttack());
 
-        if (!monster.isAlive()) {
-            System.out.println("✅ " + monster.getId() + " defeated.");
-        } else {
-            System.out.println(monster.getId() + " HP: " + monster.hpString());
-        }
+        if (!monster.isAlive()) System.out.println("✅ " + monster.getId() + " defeated.");
+        else System.out.println(monster.getId() + " HP: " + monster.hpString());
     }
 
     public void monsterAttack(LaneUnit hero, LaneUnit monster) {
@@ -169,34 +196,11 @@ public class TurnManager {
 
         hero.takeHit(monster.effectiveAttack());
 
-        if (!hero.isAlive()) {
-            System.out.println("💀 " + hero.getId() + " fell.");
-        } else {
-            System.out.println(hero.getId() + " HP: " + hero.hpString());
-        }
+        if (!hero.isAlive()) System.out.println("💀 " + hero.getId() + " fell.");
+        else System.out.println(hero.getId() + " HP: " + hero.hpString());
     }
 
-    public boolean recallHero(LanesState state, LaneUnit hero) {
-    if (hero == null || !hero.isAlive()) return false;
-
-    Position home = hero.getHomeNexus();
-    if (home == null) return false;
-
-    for (LaneUnit h : state.getHeroes()) {
-        if (h != hero && h.isAlive() && h.getPos().equals(home)) return false;
-    }
-
-    Position old = hero.getPos();
-    hero.setPos(home);
-    terrain.onMove(hero, old, home);
-
-    // optional: if recalling onto a monster (shouldn't happen with your spawns),
-    // you can allow engagement next round instead of auto-fighting.
-    return true;
-}
-
-
-    // ---- Rules: cannot move past monsters (heroes move UP) ----
+    // ---------------- RULES HELPERS ----------------
     private boolean heroMoveLegalWrtMonsters(LanesState state, Position dest) {
         int lane = laneIndex(dest.col);
         if (lane == -1) return false;
@@ -209,15 +213,16 @@ public class TurnManager {
         }
         if (nearestMonsterRow == Integer.MAX_VALUE) return true;
 
-        // cannot move to a row ABOVE the nearest monster row
+        // cannot move above nearest monster
         return dest.row >= nearestMonsterRow;
     }
 
-    // Monsters can share with heroes, but not with other monsters
     private boolean monsterMoveValid(World world, LanesState state, Position dest) {
         if (!world.getTile(dest).isAccessible()) return false;
+        if (terrain.isObstacle(dest)) return false;
+
         for (LaneUnit m : state.getMonsters()) {
-            if (m.isAlive() && m.getPos().equals(dest)) return false;
+            if (m.isAlive() && m.getPos().equals(dest)) return false; // no stacking monsters
         }
         return true;
     }
@@ -244,10 +249,30 @@ public class TurnManager {
     }
 
     private Position step(Position cur, char dir) {
+        if (cur == null) return null;
         if (dir == 'W' || dir == 'w') return cur.up();
         if (dir == 'S' || dir == 's') return cur.down();
-        if (dir == 'A' || dir == 'A') return cur.left();
+        if (dir == 'A' || dir == 'a') return cur.left();   // FIXED
         if (dir == 'D' || dir == 'd') return cur.right();
         return null;
+    }
+
+    public boolean recallHero(LanesState state, LaneUnit hero) {
+    if (hero == null || !hero.isAlive()) return false;
+
+    Position home = hero.getHomeNexus();
+    if (home == null) return false;
+
+    for (LaneUnit h : state.getHeroes()) {
+        if (h != hero && h.isAlive() && h.getPos().equals(home)) return false;
+    }
+
+    Position old = hero.getPos();
+    hero.setPos(home);
+    terrain.onMove(hero, old, home);
+
+    // optional: if recalling onto a monster (shouldn't happen with your spawns),
+    // you can allow engagement next round instead of auto-fighting.
+    return true;
     }
 }

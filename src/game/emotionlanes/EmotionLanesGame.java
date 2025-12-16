@@ -50,7 +50,7 @@ public class EmotionLanesGame implements Game {
     @Override
     public void init() {
         data = EmotionLanesWorldBuilder.buildDefaultWorld();
-        state = new LanesState(data.getWorld(), data.getGlyphLayer());
+        state = new LanesState(data.getWorld(), data.getGlyphLayer(), data.getHeroSpawns());
         renderer = new EmotionLanesRenderer(data);
 
         // Allow monster buffs? set to true for 'hard mode'
@@ -236,6 +236,10 @@ private void showInventory(LaneUnit laneHero) {
         LaneUnit engaged = turns.engagedMonsterForHero(state, h);
         boolean engagedNow = (engaged != null && engaged.isAlive());
 
+        boolean canClearObstacle = turns.hasAdjacentObstacle(data.getGlyphLayer(), h.getPos());
+        int clearOpt = -1;
+
+
         System.out.println("Hero turn: " + h.getId() + ": " + h.getHero().getName()
                 + " HP: " + h.hpString() + " MP: " + h.getHero().getMp() + " Gold: " + h.getHero().getGold()
                 + " at " + h.getPos()
@@ -253,6 +257,11 @@ private void showInventory(LaneUnit laneHero) {
 
         int opt = 3;
 
+        if (canClearObstacle) {
+        clearOpt = opt++;
+        System.out.println(clearOpt + ") Clear Obstacle (adjacent O -> becomes P)");
+        }
+        
         // If engaged: allow Attack + Spell
         int attackOpt = -1;
         int spellOpt = -1;
@@ -300,7 +309,7 @@ private void showInventory(LaneUnit laneHero) {
                 continue;
             }
             market.openForHero(h.getHero(), sc);
-            return true; // counts as the action
+            continue; // counts as the action
         }
 
         // Potion
@@ -361,6 +370,23 @@ private void showInventory(LaneUnit laneHero) {
             }
             return true; // action consumed
         }
+
+        if (clearOpt != -1 && choice.equals(String.valueOf(clearOpt))) {
+    System.out.print("Clear obstacle direction (W/A/S/D) or X cancel: ");
+    String mv = sc.nextLine().trim().toUpperCase();
+    if (mv.length() == 0) continue;
+    if ("X".equals(mv)) continue;
+
+    boolean ok = turns.tryRemoveObstacleAdjacent(h, mv.charAt(0));
+    if (!ok) {
+        System.out.println("No obstacle in that direction.");
+        pauseTiny();
+        continue;
+    }
+    return true; // action used
+}
+
+
 
         // Recall
         if (choice.equals(String.valueOf(recallOpt))) {

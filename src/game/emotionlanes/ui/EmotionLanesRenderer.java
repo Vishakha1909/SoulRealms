@@ -18,6 +18,7 @@ public class EmotionLanesRenderer {
     private static final String MAGENTA = "\u001B[35m";
     private static final String CYAN    = "\u001B[36m";
     private static final String WHITE   = "\u001B[37m";
+    private static final String ORANGE  = "\u001B[41m";
 
     // Wider cells = more 'map-like'
     private static final int CELL_WIDTH = 6;
@@ -129,7 +130,8 @@ public class EmotionLanesRenderer {
         if (g == 'P') return "P";                          // plain
         if (g == 'B') return GREEN + "B" + RESET;           // bush/fog
         if (g == 'C') return BLUE + "C" + RESET;           // cave/shadow
-        if (g == 'K') return MAGENTA + "K" + RESET;        // ego spire
+        if (g == 'K') return MAGENTA + "K" + RESET;  // koulou/ego
+        if (g == 'O') return ORANGE + "O" + RESET;   // obstacle
         return "?";
     }
 
@@ -186,6 +188,8 @@ private boolean isLaneWallCol(int c) {
         System.out.println("  B  Bush / Overthinking Fog");
         System.out.println("  C  Cave / Shadowed Memory");
         System.out.println("  K  Koulou / Ego Spire");
+        System.out.println("  O  Obstacle (can be removed by hero)");
+        System.out.println("--------------------------------------------------");
         System.out.println();
         System.out.println("Legend (units):");
         System.out.println("  " + CYAN + "H1" + RESET + ", " + CYAN + "H2" + RESET + ", " + CYAN + "H3" + RESET + "  Heroes");

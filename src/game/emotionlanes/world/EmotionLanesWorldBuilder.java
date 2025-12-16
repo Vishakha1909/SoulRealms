@@ -1,94 +1,81 @@
 package game.emotionlanes.world;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Random;
+
 import game.core.world.Position;
 import game.core.world.Tile;
 import game.core.world.TileCategory;
 import game.core.world.World;
 
-/**
- * Builds an 8x8 board that visually looks like the Valor example:
- *
- *  - 'N'  on row 0 and row 7 in lane columns  (nexus)
- *  - 'I'  at columns 2 and 5 on all rows      (lane walls)
- *  - 'B'  (Bush) on row 1 in lane cells
- *  - 'C'  (Cave) on row 2 in lane cells
- *  - 'K'  (Koulou) on row 3 in lane cells
- *  - 'P'  (Plain) on rows 4,5,6 in lane cells
- *
- * Lanes are column pairs [0,1], [3,4], [6,7].
- */
 public class EmotionLanesWorldBuilder {
 
     private static final int ROWS = 8;
     private static final int COLS = 8;
     private static final int[] WALL_COLS = {2, 5};
 
+    // lanes are 2 columns each
+    private static final int[][] LANE_COLS = {
+            {0, 1}, {3, 4}, {6, 7}
+    };
+
+    private static final Random RNG = new Random();
+
     public static EmotionLanesWorldData buildDefaultWorld() {
         Tile[][] tiles = new Tile[ROWS][COLS];
         char[][] glyph = new char[ROWS][COLS];
 
-        int r, c;
-
-        // 1) Base init: COMMON tiles, Plain glyph 'P'
-        for (r = 0; r < ROWS; r++) {
-            for (c = 0; c < COLS; c++) {
+        // base: all common + plain glyph
+        for (int r = 0; r < ROWS; r++) {
+            for (int c = 0; c < COLS; c++) {
                 tiles[r][c] = new Tile(TileCategory.COMMON);
                 glyph[r][c] = 'P';
             }
         }
 
-        // 2) Lane walls / impassable columns: 2 and 5 → '#'/BLOCKED + glyph 'I'
-        for (r = 0; r < ROWS; r++) {
-            for (int i = 0; i < WALL_COLS.length; i++) {
-                c = WALL_COLS[i];
+        // walls (inaccessible columns)
+        for (int r = 0; r < ROWS; r++) {
+            for (int w = 0; w < WALL_COLS.length; w++) {
+                int c = WALL_COLS[w];
                 tiles[r][c] = new Tile(TileCategory.BLOCKED);
                 glyph[r][c] = 'I';
             }
         }
 
-        // 3) lanes: [0,1], [3,4], [6,7]
-        int[][] laneCols = new int[][]{
-                {0, 1}, {3, 4}, {6, 7}
-        };
-
-        // 4) Top and bottom nexus rows: 'N'
-        for (int lane = 0; lane < laneCols.length; lane++) {
-            int[] colsForLane = laneCols[lane];
-            for (int k = 0; k < colsForLane.length; k++) {
-                c = colsForLane[k];
-                glyph[0][c] = 'N';           // monster nexus row
-                glyph[ROWS - 1][c] = 'N';   // hero nexus row
+        // nexus rows (top/bottom in lane columns)
+        for (int lane = 0; lane < LANE_COLS.length; lane++) {
+            for (int k = 0; k < 2; k++) {
+                int c = LANE_COLS[lane][k];
+                glyph[0][c] = 'N';
+                glyph[ROWS - 1][c] = 'N';
             }
         }
 
-        // 5) Inside lane rows with B/C/K/P pattern
-        for (r = 1; r <= 6; r++) {
-            for (int lane = 0; lane < laneCols.length; lane++) {
-                int[] colsForLane = laneCols[lane];
-                for (int k = 0; k < colsForLane.length; k++) {
-                    c = colsForLane[k];
+        // ---------- PER-LANE RANDOMIZATION ----------
+        // Each lane must contain at least one B/C/K/O in interior (rows 1..6)
+        for (int lane = 0; lane < 3; lane++) {
+            List<Position> laneInterior = laneInteriorPositions(lane);
+            Collections.shuffle(laneInterior, RNG);
 
-                    // skip walls – they already have 'I'
-                    if (glyph[r][c] == 'I') continue;
+            // Force one of each special in this lane:
+            placeGlyph(tiles, glyph, laneInterior.remove(0), 'B');
+            placeGlyph(tiles, glyph, laneInterior.remove(0), 'C');
+            placeGlyph(tiles, glyph, laneInterior.remove(0), 'K');
+            placeGlyph(tiles, glyph, laneInterior.remove(0), 'O'); // obstacle
 
-                    if (r == 1) {
-                        glyph[r][c] = 'B';
-                    } else if (r == 2) {
-                        glyph[r][c] = 'C';
-                    } else if (r == 3) {
-                        glyph[r][c] = 'K';
-                    } else {
-                        glyph[r][c] = 'P';
-                    }
-                }
+            // Fill the rest with weighted random (keep plenty of Plains)
+            for (Position p : laneInterior) {
+                char g = rollTerrain();
+                placeGlyph(tiles, glyph, p, g);
             }
         }
 
-        // 6) world (your constructor World(Tile[][], Position))
-        Position start = new Position(ROWS - 1, 3); // bottom mid lane
+        // build world
+        Position start = new Position(ROWS - 1, 3);
         World world = new World(tiles, start);
 
-        // 7) Spawn positions for 3 heroes / 3 monsters (just data holders)
         Position[] heroSpawns = new Position[]{
                 new Position(ROWS - 1, 0),
                 new Position(ROWS - 1, 3),
@@ -101,5 +88,35 @@ public class EmotionLanesWorldBuilder {
         };
 
         return new EmotionLanesWorldData(world, glyph, heroSpawns, monsterSpawns);
+    }
+
+    private static List<Position> laneInteriorPositions(int lane) {
+        List<Position> out = new ArrayList<Position>();
+        int c1 = LANE_COLS[lane][0];
+        int c2 = LANE_COLS[lane][1];
+
+        for (int r = 1; r <= 6; r++) {
+            out.add(new Position(r, c1));
+            out.add(new Position(r, c2));
+        }
+        return out;
+    }
+
+    private static char rollTerrain() {
+        // tune as you like; must not be all special
+        int x = RNG.nextInt(100);
+        if (x < 55) return 'P';
+        if (x < 70) return 'B';
+        if (x < 85) return 'C';
+        if (x < 95) return 'K';
+        return 'O';
+    }
+
+    private static void placeGlyph(Tile[][] tiles, char[][] glyph, Position p, char g) {
+        glyph[p.row][p.col] = g;
+
+        // IMPORTANT: obstacles are handled by glyph + TerrainEffectManager,
+        // so keep tiles COMMON (movement checks terrain.isObstacle()).
+        tiles[p.row][p.col] = new Tile(TileCategory.COMMON);
     }
 }
