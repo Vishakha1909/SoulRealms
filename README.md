@@ -229,6 +229,313 @@ Fully implemented:
 
 ---
 
+Soul Realms Arcade
+==================
+
+A terminal-based Java game arcade featuring multiple role-playing strategy games built on a shared object-oriented engine.
+
+Compile
+-------
+
+### Mac / Linux / WSL
+
+mkdir -p out  
+javac -d out $(find src -name "*.java")   `
+
+### Windows (PowerShell)
+
+mkdir out  
+Get-ChildItem -Recurse src -Filter *.java |    ForEach-Object { $_.FullName } |    javac -d out @-   `
+
+Run
+---
+
+java -cp out app.Main   `
+
+1\. Overview
+------------
+
+**Soul Realms Arcade** is a Java-based terminal game collection built using strong **Object-Oriented Design principles**.
+
+The project contains multiple playable games that share a **common reusable core engine**, while each game implements its own rules, world logic, and UI.
+
+The primary game in this arcade is:
+
+### ⭐ **Emotion Lanes: Defense of the Core**
+
+(A strategy game inspired by _Legends of Valor_)
+
+A secondary game, **Emotion War**, is also included to demonstrate engine reuse.
+
+This project emphasizes:
+
+*   Clean OO architecture
+    
+*   Separation of engine vs game logic
+    
+*   Extendable systems (terrain, combat, inventory, AI)
+    
+*   A fully playable turn-based loop
+    
+
+2\. Emotion Lanes: Defense of the Core
+--------------------------------------
+
+Emotion Lanes is a **lane-based strategy RPG** where heroes defend their emotional core against invading monsters.
+
+The world is divided into **three vertical lanes**, separated by impassable walls.Heroes advance **upward**, monsters advance **downward**.
+
+Victory conditions:
+
+*   **Win**: Any hero reaches the Monster Nexus (top row)
+    
+*   **Lose**: Any monster reaches the Hero Nexus (bottom row)
+    
+
+3\. World & Terrain
+-------------------
+
+The board is rendered entirely in ASCII with ANSI colors.
+
+### Terrain Types
+
+*   N – Nexus (Hero Core / Monster Rift)
+    
+*   I – Impassable wall
+    
+*   P – Plain
+    
+*   B – Bush (stat buffs)
+    
+*   C – Cave (stat buffs)
+    
+*   K – Koulou (stat buffs)
+    
+*   O – Obstacle (blocks movement, can be removed by heroes)
+    
+
+Terrain tiles apply **automatic buffs/debuffs** when units enter or leave them.
+
+Obstacle tiles:
+
+*   Block heroes and monsters
+    
+*   Heroes may spend a turn to remove them
+    
+*   Become Plain after removal
+    
+
+Terrain is **randomly distributed each run**, while Nexus and walls remain fixed.
+
+4\. Turn Structure
+------------------
+
+The game proceeds in **rounds**, each with two phases:
+
+### 4.1 Hero Phase
+
+*   Each living hero takes **exactly one action**
+    
+*   Dynamic menu based on context:
+    
+    *   Move
+        
+    *   Teleport (across lanes)
+        
+    *   Attack (if enemy in range)
+        
+    *   Cast Spell (if enemy in range)
+        
+    *   Use Potion
+        
+    *   Change Weapon
+        
+    *   Change Armor
+        
+    *   Inventory (free action)
+        
+    *   Clear Obstacle (if adjacent)
+        
+    *   Recall to Nexus
+        
+    *   Market (only at Hero Nexus)
+        
+    *   Skip
+        
+
+Attack and spell options appear **only when an enemy is in range**(range = same tile or adjacent tile in same lane).
+
+### 4.2 Monster Phase
+
+*   Monsters automatically act
+    
+*   They:
+    
+    *   Attack heroes in range
+        
+    *   Otherwise move toward the Hero Nexus
+        
+*   A **Monster Phase Log** shows:
+    
+    *   Which monsters moved
+        
+    *   Which monsters attacked
+        
+*   Player presses Enter to proceed to the next round
+    
+
+5\. Combat System
+-----------------
+
+Combat is turn-based and uses shared engine logic.
+
+### Attack Rules
+
+*   Range-limited (current tile or adjacent)
+    
+*   Dodge chance based on agility
+    
+*   Damage reduced by armor
+    
+
+### Spells
+
+*   Cost MP
+    
+*   Deal magic damage
+    
+*   Scale with hero dexterity
+    
+*   May be dodged
+    
+
+### Potions
+
+*   Heal HP / MP or boost stats
+    
+*   Single-use
+    
+*   Stored per-hero
+    
+
+6\. Inventory & Equipment
+-------------------------
+
+Each hero has a **private inventory**.
+
+### Equipment Slots
+
+*   Main hand weapon
+    
+*   Off hand weapon (for dual wield)
+    
+*   OR one 2-handed weapon
+    
+*   Armor slot
+    
+
+### Weapon Rules
+
+*   Two 1-handed weapons → dual wield
+    
+*   One 2-handed weapon → replaces both hands
+    
+*   Level requirements enforced
+    
+*   Equipping does **not** remove items from inventory
+    
+
+Armor:
+
+*   Reduces incoming damage
+    
+*   Level requirements enforced
+    
+
+7\. Market System
+-----------------
+
+Markets are available **only at the Hero Nexus**.
+
+*   Each hero shops individually
+    
+*   Buy:
+    
+    *   Weapons
+        
+    *   Armor
+        
+    *   Potions
+        
+    *   Spells
+        
+*   Gold is tracked **per hero**
+    
+*   Level restrictions apply
+    
+
+8\. Death, Respawn & Progression
+--------------------------------
+
+*   When a hero dies:
+    
+    *   They respawn at their Nexus at the **start of the next round**
+        
+    *   HP and MP are fully restored
+        
+*   End of round:
+    
+    *   Living heroes regenerate a small amount of HP/MP
+        
+*   Monster waves spawn periodically based on difficulty
+    
+
+9\. Controls & UI
+-----------------
+
+*   Fully keyboard-driven
+    
+*   ANSI-colored board
+    
+*   Dynamic menus
+    
+*   Phase banners:
+    
+    *   ROUND X | HERO PHASE
+        
+    *   ROUND X | MONSTER PHASE
+        
+*   Logs and pauses ensure no information is lost offscreen
+    
+
+10\. Emotion War (Secondary Game)
+---------------------------------
+
+Emotion War is a classic **exploration-based RPG** included to demonstrate engine reuse.
+
+It features:
+
+*   Free-roaming map
+    
+*   Emotion-themed regions
+    
+*   Turn-based party combat
+    
+*   Markets, leveling, spells, and inventory
+    
+
+Emotion War and Emotion Lanes share:
+
+*   Items
+    
+*   Characters
+    
+*   Combat rules
+    
+*   Inventory system
+    
+*   Market logic
+
 11\. Design Patterns Used
 -------------------------
 
