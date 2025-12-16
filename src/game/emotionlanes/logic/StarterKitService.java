@@ -8,6 +8,13 @@ import game.core.model.Hero;
 import game.emotionwar.factory.DataPaths;
 import game.emotionwar.factory.EmotionItemFactory;
 
+/**
+ * Provides initial starter items / loadouts for heroes in Emotion Lanes.
+ *
+ * Used to ensure each hero begins with a playable baseline inventory
+ * (e.g., starter weapon, potions), without hardcoding that logic in the game loop.
+ */
+
 public class StarterKitService {
 
     private final List<Weapon> weapons;

@@ -3,6 +3,13 @@ package game.emotionlanes.terrain;
 import game.emotionlanes.model.LaneUnit;
 import game.emotionlanes.model.UnitType;
 
+/**
+ * TerrainEffect implementation for Cave tiles.
+ *
+ * Represents a shadowed-memory style buff/debuff for units standing on Cave
+ * tiles. The exact stat changes are handled inside apply/remove.
+ */
+
 public class CaveEffect implements TerrainEffect {
     // Cave: +AGI
     public void apply(LaneUnit u, boolean allowMonsterBuffs) {

@@ -4,8 +4,19 @@ import game.core.model.Hero;
 import game.core.model.Monster;
 import game.core.world.Position;
 
+/**
+ * Wrapper model representing a unit positioned on the Emotion Lanes board.
+ *
+ * A LaneUnit tracks:
+ * - identity (H1/H2/H3 or M1/M2/M3)
+ * - current Position
+ * - alive/dead state
+ * - a payload reference to a core Hero or Monster
+ * - temporary terrain bonuses (STR/DEX/AGI)
+ */
+
 public class LaneUnit {
-    private final String id; // "H1", "M2"
+    private final String id; // "H1", "M2" etc
     private final UnitType type;
     private Position pos;
     private boolean alive = true;
