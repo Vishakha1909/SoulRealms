@@ -59,4 +59,23 @@ public class TerrainEffectManager {
             activeGlyphByUnitId.remove(u.getId());
         }
     }
+
+    public boolean isObstacle(Position p) {
+    if (!inBounds(p)) return false;
+    return glyphLayer[p.row][p.col] == 'O';
+}
+
+    public boolean removeObstacle(Position p) {
+        if (!inBounds(p)) return false;
+        if (glyphLayer[p.row][p.col] != 'O') return false;
+        glyphLayer[p.row][p.col] = 'P'; // becomes plain
+        return true;
+    }
+
+    private boolean inBounds(Position p) {
+        return p != null &&
+            p.row >= 0 && p.row < glyphLayer.length &&
+            p.col >= 0 && p.col < glyphLayer[0].length;
+    }
+
 }

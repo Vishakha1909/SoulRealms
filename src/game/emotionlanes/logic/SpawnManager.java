@@ -35,13 +35,21 @@ public class SpawnManager {
         }
 
         EmotionHero h1 = pickHero(allHeroes, sc, "Pick HERO for lane 1 (H1): ");
+        allHeroes.remove(h1);
         EmotionHero h2 = pickHero(allHeroes, sc, "Pick HERO for lane 2 (H2): ");
+        allHeroes.remove(h2);
         EmotionHero h3 = pickHero(allHeroes, sc, "Pick HERO for lane 3 (H3): ");
+        allHeroes.remove(h3);
 
         Position[] hs = data.getHeroSpawns();
         LaneUnit u1 = new LaneUnit("H1", UnitType.HERO, hs[0]); u1.attachHero(h1);
         LaneUnit u2 = new LaneUnit("H2", UnitType.HERO, hs[1]); u2.attachHero(h2);
         LaneUnit u3 = new LaneUnit("H3", UnitType.HERO, hs[2]); u3.attachHero(h3);
+
+        u1.setHomeNexus(hs[0]);
+        u2.setHomeNexus(hs[1]);
+        u3.setHomeNexus(hs[2]);
+
 
         state.getHeroes().add(u1);
         state.getHeroes().add(u2);

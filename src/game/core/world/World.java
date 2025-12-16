@@ -53,5 +53,9 @@ public class World {
         }
     }
 
+    public void setTile(Position p, Tile t) {
+        grid[p.row][p.col] = t;
+    }
+
     
 }
