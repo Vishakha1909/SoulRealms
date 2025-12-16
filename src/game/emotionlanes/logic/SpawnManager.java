@@ -15,12 +15,20 @@ import game.emotionlanes.world.EmotionLanesWorldData;
 import game.emotionwar.factory.EmotionHeroFactory;
 import game.emotionwar.model.EmotionHero;
 
+/**
+ * Responsible for populating an Emotion Lanes run with heroes and monsters.
+ *
+ * Responsibilities:
+ *  - Load hero/monster definitions from Emotion War data sources (data-driven content).
+ *  - Create LaneUnit wrappers and place them on the correct spawn positions.
+ *  - Apply initial terrain effects via TerrainEffectManager when units spawn.
+ */
+
 public class SpawnManager {
 
     private final Random rng = new Random();
 
-    // IMPORTANT: set this to your actual lanes monster data file
-    // (you can point it to one of your existing EmotionWar monster files if you want)
+    // set this to your actual lanes monster data file
     private static final String LANES_MONSTER_DATA_PATH = "data/monsters/monsters_lanes.txt";
 
     public void spawnFromEmotionWarData(LanesState state,

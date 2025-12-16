@@ -6,6 +6,15 @@ import game.emotionlanes.model.LaneUnit;
 import game.emotionlanes.terrain.TerrainEffectManager;
 import game.emotionlanes.world.EmotionLanesWorldData;
 
+/**
+ * Handles round lifecycle mechanics for Emotion Lanes.
+ *
+ * Responsibilities:
+ *  - Start-of-round: respawn dead heroes at their nexus with full HP/MP.
+ *  - End-of-round: apply regeneration / upkeep to living heroes (HP/MP regen per rules).
+ *  - Ensure terrain effects are refreshed correctly after teleports/respawns via TerrainEffectManager.
+ */
+
 public class RoundSystem {
 
     private final TerrainEffectManager terrain;

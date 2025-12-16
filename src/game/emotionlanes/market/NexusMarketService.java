@@ -15,6 +15,16 @@ import game.core.model.Hero;
 import game.emotionwar.factory.DataPaths;
 import game.emotionwar.factory.EmotionItemFactory;
 
+/**
+ * Market service for the Hero Nexus in Emotion Lanes.
+ *
+ * Provides a shop interface backed by the shared core item system
+ * (weapons, armor, potions, spells), allowing heroes to buy items during
+ * their turn when standing on the hero nexus row.
+ * - Reuses core Inventory/Item logic from the engine
+ * - Isolated from the renderer and turn logic for testability
+ */
+
 public class NexusMarketService {
 
     private final Market market;
@@ -33,7 +43,7 @@ public class NexusMarketService {
 
         this.market = new Market(stock);
     }
-
+    // resusable market opening for any hero
     public void openForHero(Hero h, Scanner sc) {
         System.out.println("Nexus Market: " + h.getName() + " (Gold: " + h.getGold() + ")");
         market.open(h, sc);

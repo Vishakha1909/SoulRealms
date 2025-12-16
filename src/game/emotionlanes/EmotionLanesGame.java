@@ -9,7 +9,6 @@ import game.core.items.Item;
 import game.core.items.Potion;
 import game.core.items.Spell;
 import game.core.items.Weapon;
-import game.emotionlanes.model.UnitType;
 import game.emotionlanes.logic.Difficulty;
 import game.emotionlanes.logic.RoundSystem;
 import game.emotionlanes.logic.MonsterWaveSpawner;
@@ -17,7 +16,6 @@ import game.emotionlanes.logic.MonsterWaveSpawner;
 
 
 import game.core.game.Game;
-import game.core.world.Position;
 import game.emotionlanes.logic.LanesState;
 import game.emotionlanes.logic.SpawnManager;
 import game.emotionlanes.logic.TokenMapper;
@@ -28,6 +26,15 @@ import game.emotionlanes.ui.EmotionLanesRenderer;
 import game.emotionlanes.world.EmotionLanesWorldBuilder;
 import game.emotionlanes.world.EmotionLanesWorldData;
 import game.emotionlanes.terrain.TerrainEffectManager;
+
+/**
+ * Main game loop for Emotion Lanes (a lane-based "Defense of the Core" mode).
+ *
+ * Responsibilities:
+ *  - Initialize world + glyph layer, spawn heroes/monsters, and wire up systems.
+ *  - Drive the round loop: start-of-round respawns -> HERO PHASE -> MONSTER PHASE -> end-of-round updates.
+ *  - Provide the interactive terminal UI for hero actions (move, teleport, attack/spell, inventory, market, etc.).
+ */
 
 public class EmotionLanesGame implements Game {
 
@@ -56,7 +63,6 @@ public class EmotionLanesGame implements Game {
         state = new LanesState(data.getWorld(), data.getGlyphLayer(), data.getHeroSpawns());
         renderer = new EmotionLanesRenderer(data);
 
-        // Allow monster buffs? set to true for 'hard mode'
         terrain = new TerrainEffectManager(data.getGlyphLayer(), true);
         turns = new TurnManager(terrain);
 
