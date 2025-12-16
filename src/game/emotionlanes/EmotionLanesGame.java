@@ -3,9 +3,12 @@ package game.emotionlanes;
 import java.util.Scanner;
 import java.util.ArrayList;
 import java.util.List;
+
+import game.core.items.Armor;
 import game.core.items.Item;
 import game.core.items.Potion;
 import game.core.items.Spell;
+import game.core.items.Weapon;
 import game.emotionlanes.model.UnitType;
 import game.emotionlanes.logic.Difficulty;
 import game.emotionlanes.logic.RoundSystem;
@@ -76,30 +79,50 @@ public void run() {
 
     while (running) {
 
-        System.out.println("\n===== ROUND " + round + " =====");
-
         // start of round: respawn dead heroes
         roundSystem.startOfRoundRespawns(state);
 
-        renderer.render(tokens.heroTokens(state), tokens.monsterTokens(state));
+        // HERO PHASE header screen
+        
+        renderer.render(
+            tokens.heroTokens(state),
+            tokens.monsterTokens(state),
+            "ROUND " + round + "  |  HERO PHASE"
+        );
+
         if (checkWinLose()) break;
 
-        // HERO PHASE
-        System.out.println("=== HERO PHASE ===");
+        // HERO PHASE (each hero takes exactly one action)
         for (int i = 0; i < state.getHeroes().size(); i++) {
             LaneUnit h = state.getHeroes().get(i);
             if (!h.isAlive()) continue;
 
-            boolean ok = heroTurn(h);
+            boolean ok = heroTurn(h);              // this re-renders and shows menus
             if (!ok) { running = false; break; }
 
             if (checkWinLose()) { running = false; break; }
         }
         if (!running) break;
 
-        // MONSTER PHASE
-        System.out.println("=== MONSTER PHASE ===");
+        // MONSTER PHASE header screen (IMPORTANT: pause so you can see it)
+        
+        renderer.render(
+            tokens.heroTokens(state),
+            tokens.monsterTokens(state),
+            "ROUND " + round + "  |  MONSTER PHASE (press Enter)"
+        );
+        pauseTiny();  // <-- this is the missing piece
+
+        // monsters act
         turns.monstersAct(data.getWorld(), state);
+
+        // show result of monster phase before ending the round
+        renderer.render(
+            tokens.heroTokens(state),
+            tokens.monsterTokens(state),
+            "ROUND " + round + "  |  MONSTER PHASE DONE (press Enter)"
+        );
+        pauseTiny();
 
         if (checkWinLose()) break;
 
@@ -108,7 +131,7 @@ public void run() {
 
         // end of round: spawn waves every N rounds
         int interval = difficulty.getSpawnEveryRounds();
-        int monsterLevel = 1 + (round / 6); // gentle scaling; tweak freely
+        int monsterLevel = 1 + (round / 6);
         waveSpawner.spawnWaveIfDue(round, interval, state, monsterLevel);
 
         round++;
@@ -116,6 +139,7 @@ public void run() {
 
     System.out.println("Back to main menu.");
 }
+
 
 private Difficulty pickDifficulty() {
     System.out.println("Choose difficulty:");
@@ -224,124 +248,177 @@ private void showInventory(LaneUnit laneHero) {
     pauseTiny();
 }
 
-
-
     private boolean heroTurn(LaneUnit h) {
     while (true) {
-        renderer.render(tokens.heroTokens(state), tokens.monsterTokens(state));
+        
+        renderer.render(
+        tokens.heroTokens(state),
+        tokens.monsterTokens(state),
+        "ROUND " + round + "  |  HERO PHASE"
+    );
+
 
         boolean atHeroNexusRow = (h.getPos().row == data.getWorld().getRows() - 1);
 
-        // ENGAGEMENT: monster on same tile
+        // ENGAGEMENT: in-range monster (same lane + distance <= 1)
         LaneUnit engaged = turns.engagedMonsterForHero(state, h);
         boolean engagedNow = (engaged != null && engaged.isAlive());
 
         boolean canClearObstacle = turns.hasAdjacentObstacle(data.getGlyphLayer(), h.getPos());
-        int clearOpt = -1;
-
 
         System.out.println("Hero turn: " + h.getId() + ": " + h.getHero().getName()
-                + " HP: " + h.hpString() + " MP: " + h.getHero().getMp() + " Gold: " + h.getHero().getGold()
+                + " HP: " + h.hpString()
+                + " MP: " + h.getHero().getMp()
+                + " Gold: " + h.getHero().getGold()
                 + " at " + h.getPos()
                 + "  (buffs: STR+" + h.getBonusStr()
                 + " DEX+" + h.getBonusDex()
                 + " AGI+" + h.getBonusAgi() + ")");
 
         if (engagedNow) {
-            System.out.println("!!! ENGAGED with " + engaged.getId()
-                    + " HP " + engaged.hpString());
+            System.out.println("!!! IN RANGE of " + engaged.getId() + " HP " + engaged.hpString());
         }
 
-        System.out.println("1) Move (W/A/S/D)");
-        System.out.println("2) Teleport (across lanes)");
+        // ---- Build menu dynamically (stable mapping) ----
+        int opt = 1;
 
-        int opt = 3;
+        final int moveOpt = opt++;
+        final int tpOpt   = opt++;
 
-        if (canClearObstacle) {
-        clearOpt = opt++;
-        System.out.println(clearOpt + ") Clear Obstacle (adjacent O -> becomes P)");
-        }
-        
-        // If engaged: allow Attack + Spell
-        int attackOpt = -1;
-        int spellOpt = -1;
+        Integer clearOpt  = null;
+        if (canClearObstacle) clearOpt = opt++;
+
+        Integer attackOpt = null;
+        Integer spellOpt  = null;
         if (engagedNow) {
             attackOpt = opt++;
-            System.out.println(attackOpt + ") Attack");
-
-            spellOpt = opt++;
-            System.out.println(spellOpt + ") Cast Spell");
+            spellOpt  = opt++;
         }
 
-        // Potion always available (even when not engaged)
-        int potionOpt = opt++;
+        final int potionOpt = opt++;
+        final int invOpt    = opt++;
+        final int weaponOpt = opt++;
+        final int armorOpt  = opt++;
+
+        Integer marketOpt = null;
+        if (atHeroNexusRow) marketOpt = opt++;
+
+        final int recallOpt = opt++;
+        final int skipOpt   = opt++;
+
+        // ---- Print menu ----
+        System.out.println(moveOpt + ") Move (W/A/S/D)");
+        System.out.println(tpOpt   + ") Teleport (across lanes)");
+
+        if (clearOpt != null) {
+            System.out.println(clearOpt + ") Clear Obstacle (adjacent O -> becomes P)");
+        }
+
+        if (attackOpt != null) {
+            System.out.println(attackOpt + ") Attack");
+            System.out.println(spellOpt  + ") Cast Spell");
+        }
+
         System.out.println(potionOpt + ") Use Potion");
+        System.out.println(invOpt    + ") Inventory (free)");
+        System.out.println(weaponOpt + ") Change Weapon");
+        System.out.println(armorOpt  + ") Change Armor");
 
-        int invOpt = opt++;
-        System.out.println(invOpt + ") Inventory");
-
-        // Market only at hero nexus row
-        int marketOpt = -1;
-        if (atHeroNexusRow) {
-            marketOpt = opt++;
+        if (marketOpt != null) {
             System.out.println(marketOpt + ") Market (Hero Nexus)");
         }
 
-        int recallOpt = opt++;
         System.out.println(recallOpt + ") Recall (return to your Nexus)");
-
-        int skipOpt = opt++;
-        System.out.println(skipOpt + ") Skip");
+        System.out.println(skipOpt   + ") Skip");
         System.out.println("Q) Quit to menu");
         System.out.print("> ");
 
         String choice = sc.nextLine().trim().toUpperCase();
         if ("Q".equals(choice)) return false;
 
-        // Skip
+        // ---- Inventory (free action) ----
+        if (choice.equals(String.valueOf(invOpt))) {
+            showInventory(h);
+            continue;
+        }
+
+        // ---- Skip ----
         if (choice.equals(String.valueOf(skipOpt))) return true;
 
-        // Market
-        if (marketOpt != -1 && choice.equals(String.valueOf(marketOpt))) {
-            if (h.getHero() == null) {
-                System.out.println("No Hero payload attached (should not happen).");
-                pauseTiny();
-                continue;
-            }
+        // ---- Market (MUST consume action) ----
+        if (marketOpt != null && choice.equals(String.valueOf(marketOpt))) {
             market.openForHero(h.getHero(), sc);
-            continue; // counts as the action
+            return true;
         }
 
-        // Potion
+        // ---- Potion (consume) ----
         if (choice.equals(String.valueOf(potionOpt))) {
             usePotion(h);
-            return true; // counts as the action
+            return true;
         }
 
-        // Attack
-        if (attackOpt != -1 && choice.equals(String.valueOf(attackOpt))) {
+        // ---- Change Weapon (consume) ----
+        if (choice.equals(String.valueOf(weaponOpt))) {
+            changeWeapon(h);
+            return true;
+        }
+
+        // ---- Change Armor (consume) ----
+        if (choice.equals(String.valueOf(armorOpt))) {
+            changeArmor(h);
+            return true;
+        }
+
+        // ---- Attack / Spell (consume) ----
+        if (attackOpt != null && choice.equals(String.valueOf(attackOpt))) {
             if (!engagedNow) {
-                System.out.println("No engaged monster.");
+                System.out.println("No monster in range.");
                 pauseTiny();
                 continue;
             }
-            turns.heroAttack(h, engaged);   // single hit (not full fight)
-            return true;                    // action consumed
+            turns.heroAttack(h, engaged);
+            return true;
         }
 
-        // Spell
-        if (spellOpt != -1 && choice.equals(String.valueOf(spellOpt))) {
+        if (spellOpt != null && choice.equals(String.valueOf(spellOpt))) {
             if (!engagedNow) {
-                System.out.println("No engaged monster.");
+                System.out.println("No monster in range.");
                 pauseTiny();
                 continue;
             }
-            castSpell(h, engaged);          // your method (spell hit)
-            return true;                    // action consumed
+            castSpell(h, engaged);
+            return true;
         }
 
-        // Move
-        if ("1".equals(choice)) {
+        // ---- Clear obstacle (consume) ----
+        if (clearOpt != null && choice.equals(String.valueOf(clearOpt))) {
+            System.out.print("Clear obstacle direction (W/A/S/D) or X cancel: ");
+            String mv = sc.nextLine().trim().toUpperCase();
+            if (mv.length() == 0) continue;
+            if ("X".equals(mv)) continue;
+
+            boolean ok = turns.tryRemoveObstacleAdjacent(h, mv.charAt(0));
+            if (!ok) {
+                System.out.println("No obstacle in that direction.");
+                pauseTiny();
+                continue;
+            }
+            return true;
+        }
+
+        // ---- Recall (consume) ----
+        if (choice.equals(String.valueOf(recallOpt))) {
+            boolean ok = turns.recallHero(state, h);
+            if (!ok) {
+                System.out.println("Recall failed.");
+                pauseTiny();
+                continue;
+            }
+            return true;
+        }
+
+        // ---- Move (consume) ----
+        if (choice.equals(String.valueOf(moveOpt))) {
             System.out.print("Direction (W/A/S/D) or X cancel: ");
             String mv = sc.nextLine().trim().toUpperCase();
             if (mv.length() == 0) continue;
@@ -354,11 +431,11 @@ private void showInventory(LaneUnit laneHero) {
                 pauseTiny();
                 continue;
             }
-            return true; // action consumed
+            return true;
         }
 
-        // Teleport
-        if ("2".equals(choice)) {
+        // ---- Teleport (consume) ----
+        if (choice.equals(String.valueOf(tpOpt))) {
             LaneUnit target = pickOtherHero(h);
             if (target == null) continue;
 
@@ -368,46 +445,14 @@ private void showInventory(LaneUnit laneHero) {
                 pauseTiny();
                 continue;
             }
-            return true; // action consumed
-        }
-
-        if (clearOpt != -1 && choice.equals(String.valueOf(clearOpt))) {
-    System.out.print("Clear obstacle direction (W/A/S/D) or X cancel: ");
-    String mv = sc.nextLine().trim().toUpperCase();
-    if (mv.length() == 0) continue;
-    if ("X".equals(mv)) continue;
-
-    boolean ok = turns.tryRemoveObstacleAdjacent(h, mv.charAt(0));
-    if (!ok) {
-        System.out.println("No obstacle in that direction.");
-        pauseTiny();
-        continue;
-    }
-    return true; // action used
-}
-
-
-
-        // Recall
-        if (choice.equals(String.valueOf(recallOpt))) {
-            boolean ok = turns.recallHero(state, h);
-            if (!ok) {
-                System.out.println("Recall failed.");
-                pauseTiny();
-                continue;
-            }
-            return true; // action consumed
-        }
-
-        if (choice.equals(String.valueOf(invOpt))) {
-            showInventory(h);
-            continue; // free action
+            return true;
         }
 
         System.out.println("Invalid.");
         pauseTiny();
     }
 }
+
 
 
     private LaneUnit pickOtherHero(LaneUnit current) {
@@ -458,4 +503,94 @@ private void showInventory(LaneUnit laneHero) {
         }
         return false;
     }
+
+    private void changeWeapon(LaneUnit laneHero) {
+        if (laneHero.getHero() == null) return;
+
+        List<Item> items = laneHero.getHero().getInventory().getItems();
+        List<Weapon> weapons = new ArrayList<Weapon>();
+        for (Item it : items) if (it instanceof Weapon) weapons.add((Weapon) it);
+
+        if (weapons.isEmpty()) {
+            System.out.println("No weapons in inventory.");
+            pauseTiny();
+            return;
+        }
+
+        System.out.println("Current weapons equipped:");
+        System.out.println("  Main: " + (laneHero.getHero().getMainHand() == null ? "(none)" : laneHero.getHero().getMainHand()));
+        System.out.println("  Off : " + (laneHero.getHero().getOffHand() == null ? "(none)" : laneHero.getHero().getOffHand()));
+        System.out.println();
+
+        System.out.println("Choose weapon to equip:");
+        for (int i = 0; i < weapons.size(); i++) {
+            System.out.println((i + 1) + ") " + weapons.get(i));
+        }
+        System.out.println("0) Cancel");
+        System.out.print("> ");
+
+        String s = sc.nextLine().trim();
+        int idx;
+        try { idx = Integer.parseInt(s); }
+        catch (NumberFormatException e) { System.out.println("Invalid."); pauseTiny(); return; }
+
+        if (idx == 0) return;
+        if (idx < 1 || idx > weapons.size()) { System.out.println("Invalid."); pauseTiny(); return; }
+
+        Weapon chosen = weapons.get(idx - 1);
+        laneHero.getHero().equipWeapon(chosen); // does level + hand rules inside
+        pauseTiny();
+    }
+
+    private void changeArmor(LaneUnit laneHero) {
+    if (laneHero.getHero() == null) return;
+
+    List<Item> items = laneHero.getHero().getInventory().getItems();
+    List<Armor> armors = new ArrayList<Armor>();
+    for (Item it : items) if (it instanceof Armor) armors.add((Armor) it);
+
+    if (armors.isEmpty()) {
+        System.out.println("No armor in inventory.");
+        pauseTiny();
+        return;
+    }
+
+    System.out.println("Current armor equipped:");
+    System.out.println("  Armor: " + (laneHero.getHero().getArmor() == null ? "(none)" : laneHero.getHero().getArmor().getName()));
+    System.out.println();
+
+    System.out.println("Choose armor to equip:");
+    for (int i = 0; i < armors.size(); i++) {
+        Armor a = armors.get(i);
+        System.out.println((i + 1) + ") " + a.getName()
+                + " (DR " + a.getDamageReduction()
+                + ", lvl " + a.getRequiredLevel() + ")");
+    }
+    System.out.println("0) Cancel");
+    System.out.print("> ");
+
+    String s = sc.nextLine().trim();
+    int idx;
+    try { idx = Integer.parseInt(s); }
+    catch (NumberFormatException e) { System.out.println("Invalid."); pauseTiny(); return; }
+
+    if (idx == 0) return;
+    if (idx < 1 || idx > armors.size()) { System.out.println("Invalid."); pauseTiny(); return; }
+
+    Armor chosen = armors.get(idx - 1);
+
+    // REQUIRED: enforce level (same idea as weapon)
+    if (chosen.getRequiredLevel() > laneHero.getHero().getLevel()) {
+        System.out.println(laneHero.getHero().getName()
+                + " is not high enough level to equip " + chosen.getName() + ".");
+        pauseTiny();
+        return;
+    }
+
+    laneHero.getHero().equipArmor(chosen); // do NOT remove from inventory
+    System.out.println(laneHero.getHero().getName() + " equips " + chosen.getName() + ".");
+    pauseTiny();
+}
+
+
 }

@@ -97,9 +97,9 @@ public class TurnManager {
             if (!m.isAlive()) continue;
 
             // engaged? attack instead of moving
-            LaneUnit engagedHero = heroOn(state, m.getPos());
-            if (engagedHero != null) {
-                monsterAttack(engagedHero, m);
+            LaneUnit targetHero = heroInRangeForMonster(state, m);
+            if (targetHero != null) {
+                monsterAttack(targetHero, m);
                 continue;
             }
 
@@ -183,6 +183,24 @@ public class TurnManager {
         int dc = Math.abs(a.col - b.col);
         return (dr + dc) <= 1;   // current OR 4-neighbor
     }
+
+    // Monsters attack heroes if a hero is IN RANGE (same lane + distance <= 1)
+    private LaneUnit heroInRangeForMonster(LanesState state, LaneUnit monster) {
+        if (monster == null || !monster.isAlive()) return null;
+
+        Position mp = monster.getPos();
+        int lane = laneIndex(mp.col);
+        if (lane == -1) return null;
+
+        for (LaneUnit h : state.getHeroes()) {
+            if (!h.isAlive()) continue;
+            if (laneIndex(h.getPos().col) != lane) continue;
+
+            if (inAttackRange(mp, h.getPos())) return h;
+        }
+        return null;
+    }
+
 
 
     public void heroAttack(LaneUnit hero, LaneUnit monster) {

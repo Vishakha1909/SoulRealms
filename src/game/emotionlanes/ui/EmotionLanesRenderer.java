@@ -32,7 +32,8 @@ public class EmotionLanesRenderer {
     }
 
     public void render(Map<Position, String> heroTokens,
-                       Map<Position, String> monsterTokens) {
+                   Map<Position, String> monsterTokens,
+                   String statusLine) {
 
         clearSoft();
 
@@ -43,7 +44,15 @@ public class EmotionLanesRenderer {
 
         printBoard(heroTokens, monsterTokens);
         printLegend();
+
+        if (statusLine != null && !statusLine.isEmpty()) {
+            System.out.println();
+            System.out.println("--------------------------------------------------");
+            System.out.println(statusLine);
+            System.out.println("--------------------------------------------------");
+        }
     }
+
 
     private void clearSoft() {
         for (int i = 0; i < 18; i++) System.out.println();

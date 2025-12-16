@@ -31,6 +31,6 @@ public class EmotionLanesDemo {
 System.out.println("DEBUG lookup M1: " + monsters.get(new Position(0,1)));
 
 
-        renderer.render(heroes, monsters);
+        //renderer.render(heroes, monsters);
     }
 }
