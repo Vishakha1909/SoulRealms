@@ -7,6 +7,14 @@ import game.core.world.World;
 import game.core.world.Position;
 import game.emotionlanes.model.LaneUnit;
 
+/**
+ * Shared mutable game state container for Emotion Lanes.
+ *
+ * Responsibilities:
+ *  - Provide a single place for systems (TurnManager, spawners, UI) to read/update unit state.
+ *  - Keep hero spawn mapping consistent (index i -> hero i’s nexus spawn).
+ */
+
 public class LanesState {
 
     private final World world;
@@ -17,7 +25,7 @@ public class LanesState {
     private final List<LaneUnit> heroes = new ArrayList<LaneUnit>();
     private final List<LaneUnit> monsters = new ArrayList<LaneUnit>();
 
-    private int nextMonsterId = 4; // you already spawn M1,M2,M3
+    private int nextMonsterId = 4;
 
     public LanesState(World world, char[][] glyphLayer, Position[] heroSpawns) {
         this.world = world;

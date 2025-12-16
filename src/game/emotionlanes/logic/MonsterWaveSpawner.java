@@ -7,6 +7,15 @@ import game.emotionlanes.model.UnitType;
 import game.emotionlanes.terrain.TerrainEffectManager;
 import game.emotionlanes.world.EmotionLanesWorldData;
 
+/**
+ * Spawns monster waves over time based on difficulty and round count.
+ *
+ * Responsibilities:
+ *  - On configured intervals, add new monsters at the monster nexus spawns.
+ *  - Scale wave strength (e.g., monster level) using a simple round-based progression.
+ *  - Ensure newly spawned monsters have terrain effects applied correctly on spawn.
+ */
+
 public class MonsterWaveSpawner {
 
     private final TerrainEffectManager terrain;

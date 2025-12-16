@@ -10,6 +10,15 @@ import game.core.world.Tile;
 import game.core.world.TileCategory;
 import game.core.world.World;
 
+/**
+ * Builds the default Emotion Lanes board layout.
+ *
+ * Board structure:
+ *  - Fixed 8x8 grid with 3 lanes separated by inaccessible wall columns.
+ *  - Nexus rows (top and bottom) in each lane.
+ *  - Interior lane cells filled with plains and special terrain/obstacles.
+ */
+
 public class EmotionLanesWorldBuilder {
 
     private static final int ROWS = 8;

@@ -6,6 +6,16 @@ import java.util.Map;
 import game.core.world.Position;
 import game.emotionlanes.model.LaneUnit;
 
+/**
+ * Applies and removes terrain-based effects for units based on the glyph layer.
+ *
+ * Glyphs:
+ *  - B, C, K: terrain tiles that apply temporary buffs/debuffs via TerrainEffect implementations
+ *  - O: obstacle tile (blocked; may be removed by heroes)
+ *  - P: plain tile (no effect)
+ *  - N, I: nexus/inn tile (no effect)
+ */
+
 public class TerrainEffectManager {
 
     private final char[][] glyphLayer;

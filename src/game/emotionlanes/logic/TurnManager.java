@@ -9,6 +9,16 @@ import game.core.world.World;
 import game.emotionlanes.model.LaneUnit;
 import game.emotionlanes.terrain.TerrainEffectManager;
 
+/**
+ * Rule engine for Emotion Lanes turns.
+ *
+ * Responsibilities:
+ *  - Validate and apply hero actions: movement, teleport, recall, obstacle removal.
+ *  - Execute monster AI for the MONSTER PHASE (movement + attacks).
+ *  - Enforce lane rules: heroes cannot pass the nearest monster in their lane; teleport must stay across lanes.
+ *  - Determine engagement / attack-range interactions for both heroes and monsters.
+ */
+
 public class TurnManager {
 
     private final Random rng = new Random();

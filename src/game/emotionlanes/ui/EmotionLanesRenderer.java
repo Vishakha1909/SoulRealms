@@ -5,6 +5,15 @@ import java.util.Map;
 import game.core.world.Position;
 import game.emotionlanes.world.EmotionLanesWorldData;
 
+/**
+ * Terminal renderer for Emotion Lanes.
+ *
+ * Responsibilities:
+ *  - Print an ASCII board with thicker lane separators and optional ANSI colors.
+ *  - Show terrain glyphs (N/I/P/B/C/K/O), and occupancy tokens for heroes/monsters.
+ *  - Display a status line (e.g., "ROUND X | HERO PHASE") below the board.
+ */
+
 public class EmotionLanesRenderer {
 
     private final EmotionLanesWorldData data;
