@@ -13,6 +13,7 @@ public class LaneUnit {
     // Payload from EmotionWar:
     private Hero hero;
     private Monster monster;
+    private Position homeNexus;
 
     public void setHero(Hero hero) { this.hero = hero; }
     public void setMonster(Monster monster) { this.monster = monster; }
@@ -27,6 +28,11 @@ public class LaneUnit {
         this.type = type;
         this.pos = start;
     }
+
+    
+    public void setHomeNexus(Position p) { this.homeNexus = p; }
+    public Position getHomeNexus() { return homeNexus; }
+
 
     public String getId() { return id; }
     public UnitType getType() { return type; }

@@ -176,6 +176,26 @@ public class TurnManager {
         }
     }
 
+    public boolean recallHero(LanesState state, LaneUnit hero) {
+    if (hero == null || !hero.isAlive()) return false;
+
+    Position home = hero.getHomeNexus();
+    if (home == null) return false;
+
+    for (LaneUnit h : state.getHeroes()) {
+        if (h != hero && h.isAlive() && h.getPos().equals(home)) return false;
+    }
+
+    Position old = hero.getPos();
+    hero.setPos(home);
+    terrain.onMove(hero, old, home);
+
+    // optional: if recalling onto a monster (shouldn't happen with your spawns),
+    // you can allow engagement next round instead of auto-fighting.
+    return true;
+}
+
+
     // ---- Rules: cannot move past monsters (heroes move UP) ----
     private boolean heroMoveLegalWrtMonsters(LanesState state, Position dest) {
         int lane = laneIndex(dest.col);
@@ -224,10 +244,10 @@ public class TurnManager {
     }
 
     private Position step(Position cur, char dir) {
-        if (dir == 'W') return cur.up();
-        if (dir == 'S') return cur.down();
-        if (dir == 'A') return cur.left();
-        if (dir == 'D') return cur.right();
+        if (dir == 'W' || dir == 'w') return cur.up();
+        if (dir == 'S' || dir == 's') return cur.down();
+        if (dir == 'A' || dir == 'A') return cur.left();
+        if (dir == 'D' || dir == 'd') return cur.right();
         return null;
     }
 }

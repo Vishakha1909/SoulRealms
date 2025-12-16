@@ -80,6 +80,8 @@ public class SpawnManager {
         terrain.onSpawn(m3);
     }
 
+    
+
     private EmotionHero pickHero(List<EmotionHero> all, Scanner sc, String prompt) {
         while (true) {
             System.out.println(prompt);
